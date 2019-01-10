@@ -7,13 +7,19 @@ class Node{
     std::list<Node*> predecessors;
 
     int id;
+    int partitionId;
 
 public:
-    explicit Node(const int inId) : id(inId){
+    explicit Node(const int inId, const int inPartitionId = 0)
+        : id(inId), partitionId(inPartitionId){
     }
 
     int getId() const{
         return  id;
+    }
+
+    int getPartitionId() const{
+        return partitionId;
     }
 
     void addSuccessor(Node* next){
@@ -42,6 +48,14 @@ public:
 #include <vector>
 #include <memory>
 
+// For the export to dot file
+#include <string>
+#include <fstream>
+#include <unordered_map>
+#include <array>
+// For colors
+#include <random>
+
 class Graph{
     std::vector<std::unique_ptr<Node>> nodes;
 public:
@@ -66,6 +80,32 @@ public:
         }
     }
 
+
+    void saveToDot(const std::string& inFilename){
+        std::unordered_map<int, std::array<double, 3>> partitionColors;
+        std::mt19937 rng(0);
+        std::uniform_real_distribution<double> uni(0,1);
+
+        std::ofstream dotFile(inFilename);
+        dotFile << "digraph G {\n";
+
+        for(const auto& node : nodes){
+            for(const auto& otherNode : node->getSuccessors()){
+                dotFile << node->getId() << " -> " << otherNode->getId() << ";\n";
+            }
+
+            if(partitionColors.find(node->getPartitionId()) == partitionColors.end()){
+                partitionColors[node->getPartitionId()] = std::array<double, 3>{uni(rng), uni(rng), uni(rng)};
+            }
+
+            const auto& color = partitionColors[node->getPartitionId()];
+            dotFile << node->getId() << " [color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
+        }
+
+
+        dotFile << "}\n";
+        dotFile.close();
+    }
 };
 
 #include <iostream>
@@ -73,6 +113,6 @@ public:
 int main(){
     std::vector<std::pair<int,int>> someDeps{{0,1}, {0,2}, {1,2}};
     Graph aGraph(someDeps);
-
+    aGraph.saveToDot("/tmp/agraph.dot");
     return 0;
 }

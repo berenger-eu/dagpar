@@ -104,6 +104,14 @@ public:
         }
     }
 
+    int getNbNodes() const{
+        return nodes.size();
+    }
+
+    const Node* getNode(const int inIdxNode) const{
+        assert(inIdxNode < nodes.size());
+        return nodes[inIdxNode].get();
+    }
 
     void saveToDot(const std::string& inFilename){
         std::unordered_map<int, std::array<double, 3>> partitionColors;
@@ -173,6 +181,143 @@ public:
 };
 
 
+#include <tuple>
+#include <iostream>
+#include <queue>
+
+class Executor{
+public:
+    class Event{
+        int workerId;
+        int nodeId;
+        int cost;
+        int startingPoint;
+    public:
+        Event(const int inWorkerId, const int inNodeId, const int inCost, const int inStartingPoint)
+            : workerId(inWorkerId), nodeId(inNodeId), cost(inCost), startingPoint(inStartingPoint){}
+    };
+
+    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers){
+        if(inGraph.getNbNodes() == 0){
+            return std::make_tuple(0,std::vector<Event>());
+        }
+
+        struct Worker{
+            int scheduledAvailable;
+            int currentTaskId;
+            int currentWorkerId;
+            bool operator<(const Worker& other) const{
+                return scheduledAvailable > other.scheduledAvailable;
+            }
+        };
+
+        std::vector<int> idleWorkerCount;
+
+        idleWorkerCount.resize(inNbWorkers);
+        std::iota(idleWorkerCount.begin(), idleWorkerCount.end(), 0);
+
+        std::vector<int> readyTasks;
+
+        for(int idxNode = 0 ; idxNode < inGraph.getNbNodes() ; ++idxNode){
+            const auto& node = inGraph.getNode(idxNode);
+            if(node->getPredecessors().size() == 0){
+                readyTasks.push_back(node->getId());
+            }
+        }
+
+        std::cout << "[EXECUTION] Ready tasks at starting time => " << readyTasks.size() << std::endl;
+        assert(readyTasks.size());
+
+        std::vector<int> countPredecessorsOver(inGraph.getNbNodes(), 0);
+        std::priority_queue<Worker> workers;
+        int nbComputedTask = 0;
+        int currentTime = 0;
+        std::vector<Event> events;
+        events.reserve(inGraph.getNbNodes());
+
+        while(readyTasks.size() && idleWorkerCount.size()){
+            const int readyTaskId = readyTasks.back();
+            readyTasks.pop_back();
+
+            const int workerId = idleWorkerCount.back();
+            idleWorkerCount.pop_back();
+
+            Worker wk{currentTime + inGraph.getNode(readyTaskId)->getCost(),
+                     readyTaskId,
+                     workerId};
+            workers.push(wk);
+
+            events.push_back(Event(workerId, readyTaskId, inGraph.getNode(readyTaskId)->getCost(), currentTime));
+
+            nbComputedTask += 1;
+        }
+
+        assert(workers.size() != 0);
+
+        while(nbComputedTask != inGraph.getNbNodes()){
+            {
+                assert(workers.size());
+                Worker worker = workers.top();
+                workers.pop();
+
+                const int currentTaskId = worker.currentTaskId;
+                assert(currentTime <= worker.scheduledAvailable);
+                currentTime = worker.scheduledAvailable;
+
+                // release dependencies
+                for(const auto& successorNode : inGraph.getNode(currentTaskId)->getSuccessors()){
+                    countPredecessorsOver[successorNode->getId()] += 1;
+                    if(countPredecessorsOver[successorNode->getId()] == successorNode->getPredecessors().size()){
+                        readyTasks.push_back(successorNode->getId());
+                        // TODO inAllTasks[successorId].setReadyTime(currentTime);
+                    }
+                }
+
+                // Make worker available again
+                idleWorkerCount.push_back(worker.currentWorkerId);
+            }
+
+            while(readyTasks.size() && idleWorkerCount.size()){
+                const int readyTaskId = readyTasks.back();
+                readyTasks.pop_back();
+
+                const int workerId = idleWorkerCount.back();
+                idleWorkerCount.pop_back();
+
+                Worker wk{currentTime + inGraph.getNode(readyTaskId)->getCost(),
+                         readyTaskId,
+                         workerId};
+                workers.push(wk);
+
+                events.push_back(Event(workerId, readyTaskId, inGraph.getNode(readyTaskId)->getCost(), currentTime));
+
+                nbComputedTask += 1;
+            }
+
+            assert(workers.size() != 0);
+        }
+
+        assert(workers.size() != 0);
+        while(workers.size() != 0){
+            assert(workers.size());
+            Worker worker = workers.top();
+            workers.pop();
+
+            const int currentTaskId = worker.currentTaskId;
+            assert(currentTime <= worker.scheduledAvailable);
+            currentTime = worker.scheduledAvailable;
+
+            assert(inGraph.getNode(currentTaskId)->getSuccessors().size() == 0);
+        }
+
+
+        std::cout << "[EXECUTION] Total duration => " << currentTime << std::endl;
+
+        return std::make_tuple(currentTime, events);
+    }
+};
+
+
 
 #include <iostream>
 
@@ -184,5 +329,10 @@ int main(){
 
     Graph depGraph = aGraph.getPartitionGraph();
     aGraph.saveToDot("/tmp/depgraph.dot");
+
+    int duration;
+    std::vector<Executor::Event> events;
+    std::tie(duration, events) = Executor::Execute(depGraph, 2);
+
     return 0;
 }

@@ -14,6 +14,10 @@ public:
         : id(inId), partitionId(inPartitionId){
     }
 
+    void setPartitionId(const int inPartitionId){
+        partitionId = inPartitionId;
+    }
+
     int getId() const{
         return  id;
     }
@@ -99,12 +103,25 @@ public:
             }
 
             const auto& color = partitionColors[node->getPartitionId()];
-            dotFile << node->getId() << " [color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
+            dotFile << node->getId() << " [style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
         }
 
 
         dotFile << "}\n";
         dotFile.close();
+    }
+
+    void partition(const int minSize, const int maxSize, const int degreeParallelism){
+        int currentPartitionId = 0;
+        int currentPartitionSize = 0;
+        for(auto& node : nodes){
+            node->setPartitionId(currentPartitionId);
+            currentPartitionSize += 1;
+            if(currentPartitionSize == maxSize){
+                currentPartitionId += 1;
+                currentPartitionSize = 0;
+            }
+        }
     }
 };
 
@@ -113,6 +130,7 @@ public:
 int main(){
     std::vector<std::pair<int,int>> someDeps{{0,1}, {0,2}, {1,2}};
     Graph aGraph(someDeps);
+    aGraph.partition(1,1,3);
     aGraph.saveToDot("/tmp/agraph.dot");
     return 0;
 }

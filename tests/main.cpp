@@ -123,7 +123,30 @@ public:
             }
         }
     }
+
+
+    Graph getPartitionGraph() const{
+        std::vector<std::pair<int,int>> dependencyBetweenPartitions;
+
+        for(const auto& node : nodes){
+            for(const auto& otherNode : node->getSuccessors()){
+                dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
+            }
+        }
+
+        std::sort(dependencyBetweenPartitions.begin(), dependencyBetweenPartitions.end(),
+                  [](const std::pair<int,int>& dep1, const std::pair<int,int>& dep2){
+            return dep1.first < dep2.first || (dep1.first == dep2.first && dep1.second < dep2.second);
+        });
+
+        auto last = std::unique(dependencyBetweenPartitions.begin(), dependencyBetweenPartitions.end());
+        dependencyBetweenPartitions.erase(last, dependencyBetweenPartitions.end());
+
+        return Graph(dependencyBetweenPartitions);
+    }
 };
+
+
 
 #include <iostream>
 
@@ -132,5 +155,8 @@ int main(){
     Graph aGraph(someDeps);
     aGraph.partition(1,1,3);
     aGraph.saveToDot("/tmp/agraph.dot");
+
+    Graph depGraph = aGraph.getPartitionGraph();
+    aGraph.saveToDot("/tmp/depgraph.dot");
     return 0;
 }

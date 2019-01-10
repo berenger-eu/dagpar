@@ -8,14 +8,19 @@ class Node{
 
     int id;
     int partitionId;
+    int cost;
 
 public:
     explicit Node(const int inId, const int inPartitionId = 0)
-        : id(inId), partitionId(inPartitionId){
+        : id(inId), partitionId(inPartitionId), cost(1){
     }
 
     void setPartitionId(const int inPartitionId){
         partitionId = inPartitionId;
+    }
+
+    void setCost(const int inCost){
+        cost = inCost;
     }
 
     int getId() const{
@@ -24,6 +29,10 @@ public:
 
     int getPartitionId() const{
         return partitionId;
+    }
+
+    int getCost() const{
+        return cost;
     }
 
     void addSuccessor(Node* next){
@@ -48,6 +57,7 @@ public:
 };
 
 
+#include <cassert>
 #include <utility>
 #include <vector>
 #include <memory>
@@ -63,7 +73,7 @@ public:
 class Graph{
     std::vector<std::unique_ptr<Node>> nodes;
 public:
-    Graph(const std::vector<std::pair<int,int>>& inDependencyList){
+    explicit Graph(const std::vector<std::pair<int,int>>& inDependencyList){
         for(const auto& dep : inDependencyList){
             assert(dep.first < dep.second);
             if(nodes.size() <= dep.first){
@@ -81,6 +91,16 @@ public:
 
             nodes[dep.first]->addSuccessor(nodes[dep.second].get());
             nodes[dep.second]->addPredecessor(nodes[dep.first].get());
+        }
+    }
+
+
+    Graph(const std::vector<std::pair<int,int>>& inDependencyList,
+          const std::vector<int>& inCostPerNode) : Graph(inDependencyList){
+        assert(nodes.size() == inCostPerNode.size());
+
+        for(int idxNode = 0 ; idxNode < nodes.size() ; ++idxNode){
+            nodes[idxNode]->setCost(inCostPerNode[idxNode]);
         }
     }
 
@@ -103,7 +123,7 @@ public:
             }
 
             const auto& color = partitionColors[node->getPartitionId()];
-            dotFile << node->getId() << " [style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
+            dotFile << node->getId() << " [label=\"" << node->getCost() << "\", style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
         }
 
 
@@ -127,11 +147,17 @@ public:
 
     Graph getPartitionGraph() const{
         std::vector<std::pair<int,int>> dependencyBetweenPartitions;
+        std::vector<int> partitionCosts;
 
         for(const auto& node : nodes){
             for(const auto& otherNode : node->getSuccessors()){
                 dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
             }
+
+            if(partitionCosts.size() <= node->getPartitionId()){
+                partitionCosts.resize(node->getPartitionId()+1);
+            }
+            partitionCosts[node->getPartitionId()] += node->getCost();
         }
 
         std::sort(dependencyBetweenPartitions.begin(), dependencyBetweenPartitions.end(),
@@ -142,7 +168,7 @@ public:
         auto last = std::unique(dependencyBetweenPartitions.begin(), dependencyBetweenPartitions.end());
         dependencyBetweenPartitions.erase(last, dependencyBetweenPartitions.end());
 
-        return Graph(dependencyBetweenPartitions);
+        return Graph(dependencyBetweenPartitions, partitionCosts);
     }
 };
 

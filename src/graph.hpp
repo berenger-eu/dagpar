@@ -21,21 +21,18 @@ class Graph{
     std::vector<std::unique_ptr<Node>> nodes;
 public:
     explicit Graph(const std::vector<std::pair<int,int>>& inDependencyList){
+        int maxNodesIdx = 0;
         for(const auto& dep : inDependencyList){
             assert(dep.first < dep.second);
-            if(int(nodes.size()) <= dep.first){
-                nodes.resize(dep.first+1);
-            }
-            if(!nodes[dep.first]){
-                nodes[dep.first].reset(new Node(dep.first));
-            }
-            if(int(nodes.size()) <= dep.second){
-                nodes.resize(dep.second+1);
-            }
-            if(!nodes[dep.second]){
-                nodes[dep.second].reset(new Node(dep.second));
-            }
+            maxNodesIdx = std::max(maxNodesIdx, dep.second);
+        }
 
+        nodes.resize(maxNodesIdx+1);
+        for(int idxNode = 0 ; idxNode < int(nodes.size()) ; ++idxNode){
+            nodes[idxNode].reset(new Node(idxNode));
+        }
+
+        for(const auto& dep : inDependencyList){
             nodes[dep.first]->addSuccessor(nodes[dep.second].get());
             nodes[dep.second]->addPredecessor(nodes[dep.first].get());
         }

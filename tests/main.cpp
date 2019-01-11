@@ -38,9 +38,55 @@ std::vector<std::pair<int,int>> GenerateDepTreeTasks(const int inHeight){
     return someDeps;
 }
 
+std::vector<std::pair<int,int>> GenerateDoubleDepTreeTasks(const int inHeight){
+    std::vector<std::pair<int,int>> someDeps;
+    int cellsOffset = 0;
+    for(int level = 1 ; level < (inHeight+1)/2 ; ++level){
+        const int nbCellsAtPreviousLevel = level;
+        const int nbCellsAtLevel = (level+1);
+
+        someDeps.push_back(std::pair<int,int>{cellsOffset, cellsOffset + nbCellsAtPreviousLevel});
+
+        for(int idxCell = 1 ; idxCell < nbCellsAtLevel-1 ; ++idxCell){
+            someDeps.push_back(std::pair<int,int>{cellsOffset + idxCell-1, cellsOffset + nbCellsAtPreviousLevel + idxCell});
+            someDeps.push_back(std::pair<int,int>{cellsOffset + idxCell, cellsOffset + nbCellsAtPreviousLevel + idxCell});
+        }
+
+        someDeps.push_back(std::pair<int,int>{cellsOffset + nbCellsAtPreviousLevel-1, cellsOffset + nbCellsAtPreviousLevel + nbCellsAtLevel-1});
+
+        cellsOffset += nbCellsAtPreviousLevel;
+    }
+
+    if((inHeight & 1) == 0){
+        const int nbCellsAtPreviousLevel = inHeight/2;
+        const int nbCellsAtLevel = inHeight/2;
+
+        for(int idxCell = 0 ; idxCell < nbCellsAtLevel ; ++idxCell){
+            someDeps.push_back(std::pair<int,int>{cellsOffset + idxCell, cellsOffset + nbCellsAtPreviousLevel + idxCell});
+        }
+
+        cellsOffset += nbCellsAtPreviousLevel;
+    }
+
+    for(int level = (inHeight+2)/2 ; level < inHeight ; ++level){
+        const int nbCellsAtPreviousLevel = (inHeight+1) - level;
+        const int nbCellsAtLevel = (inHeight+1) - level - 1;
+
+        for(int idxCell = 0 ; idxCell < nbCellsAtLevel ; ++idxCell){
+            someDeps.push_back(std::pair<int,int>{cellsOffset + idxCell, cellsOffset + nbCellsAtPreviousLevel + idxCell});
+            someDeps.push_back(std::pair<int,int>{cellsOffset + idxCell+1, cellsOffset + nbCellsAtPreviousLevel + idxCell});
+        }
+
+        cellsOffset += nbCellsAtPreviousLevel;
+    }
+
+    return someDeps;
+}
+
 int main(){    
     //std::vector<std::pair<int,int>> someDeps = GenerateBinaryTreeTasks(5);
-    std::vector<std::pair<int,int>> someDeps = GenerateDepTreeTasks(8);
+    //std::vector<std::pair<int,int>> someDeps = GenerateDepTreeTasks(8);
+    std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(13);
 
     const int nbThreads = 2;
     const int partMinSize = 2;

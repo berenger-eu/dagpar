@@ -43,10 +43,13 @@ public:
 
 
     Graph(const std::vector<std::pair<int,int>>& inDependencyList,
+          const std::vector<int>& inPartitionPerNode,
           const std::vector<int>& inCostPerNode) : Graph(inDependencyList){
+        assert(nodes.size() == inPartitionPerNode.size());
         assert(nodes.size() == inCostPerNode.size());
 
         for(int idxNode = 0 ; idxNode < int(nodes.size()) ; ++idxNode){
+            nodes[idxNode]->setPartitionId(inPartitionPerNode[idxNode]);
             nodes[idxNode]->setCost(inCostPerNode[idxNode]);
         }
     }
@@ -87,9 +90,42 @@ public:
     }
 
     void partition(const int /*minSize*/, const int maxSize, const int /*degreeParallelism*/){
+        std::vector<Node*> sources;
+        for(auto& node : nodes){
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+            }
+        }
+
+        std::vector<int> counterRelease(nodes.size(), 0);
+
+        std::vector<Node*> orderedNodes;
+        orderedNodes.reserve(nodes.size());
+
+        std::mt19937 rng(0);
+        while(sources.size()){
+            std::uniform_int_distribution<int> uni(0,int(sources.size())-1);
+            const int selectedNodePos = uni(rng);
+            // Select a node
+            Node* selectedNode = sources[selectedNodePos];
+            orderedNodes.push_back(selectedNode);
+            // Remove it from source
+            sources[selectedNodePos] = sources[sources.size()-1];
+            sources.pop_back();
+            // Add deps if released
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    sources.push_back(otherNode);
+                }
+            }
+        }
+
+
         int currentPartitionId = 0;
         int currentPartitionSize = 0;
-        for(auto& node : nodes){
+        for(auto& node : orderedNodes){
             node->setPartitionId(currentPartitionId);
             currentPartitionSize += 1;
             if(currentPartitionSize == maxSize){
@@ -106,7 +142,10 @@ public:
 
         for(const auto& node : nodes){
             for(const auto& otherNode : node->getSuccessors()){
-                dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
+                assert(node->getPartitionId() <= otherNode->getPartitionId());
+                if(node->getPartitionId() != otherNode->getPartitionId()){
+                    dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
+                }
             }
 
             if(int(partitionCosts.size()) <= node->getPartitionId()){
@@ -123,7 +162,10 @@ public:
         auto last = std::unique(dependencyBetweenPartitions.begin(), dependencyBetweenPartitions.end());
         dependencyBetweenPartitions.erase(last, dependencyBetweenPartitions.end());
 
-        return Graph(dependencyBetweenPartitions, partitionCosts);
+        std::vector<int> partitionIds(partitionCosts.size());
+        std::iota(partitionIds.begin(), partitionIds.end(), 0);
+
+        return Graph(dependencyBetweenPartitions, partitionIds, partitionCosts);
     }
 };
 

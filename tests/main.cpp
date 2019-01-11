@@ -3,9 +3,13 @@
 #include "graph.hpp"
 #include "executor.hpp"
 
-int main(){
+int main(){    
+    std::vector<std::pair<int,int>> someDeps;
+    for(int idxTask = 1 ; idxTask < 10 ; ++idxTask){
+        someDeps.push_back(std::pair<int,int>{(idxTask-1)/2, idxTask});
+    }
+
     const int nbThreads = 2;
-    std::vector<std::pair<int,int>> someDeps{{0,1}, {0,2}, {1,2}};
     Graph aGraph(someDeps);
     aGraph.partition(1,1,nbThreads);
     aGraph.saveToDot("/tmp/agraph.dot");

@@ -56,7 +56,7 @@ public:
     }
 
     const Node* getNode(const int inIdxNode) const{
-        assert(inIdxNode < nodes.size());
+        assert(inIdxNode < int(nodes.size()));
         return nodes[inIdxNode].get();
     }
 

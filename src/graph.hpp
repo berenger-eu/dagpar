@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include <memory>
+#include <deque>
 
 // For the export to dot file
 #include <string>
@@ -86,7 +87,7 @@ public:
         dotFile.close();
     }
 
-    void partition(const int /*minSize*/, const int maxSize, const int /*degreeParallelism*/){
+    void partitionRandom(const int maxSize){
         std::vector<Node*> sources;
         for(auto& node : nodes){
             if(node->getPredecessors().size() == 0){
@@ -132,6 +133,150 @@ public:
         }
     }
 
+    void partition(const int /*minSize*/, const int maxSize, const int /*degreeParallelism*/){
+        std::vector<int> minDistFromTop(nodes.size(), -1);
+        std::vector<int> maxDistFromTop(nodes.size(), -1);
+
+        std::vector<Node*> originalSources;
+        for(auto& node : nodes){
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node.get());
+                minDistFromTop[node->getId()] = 0;
+                maxDistFromTop[node->getId()] = 0;
+            }
+        }
+        {
+            std::vector<Node*> sources = originalSources;
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    if(minDistFromTop[otherNode->getId()] == -1){
+                        minDistFromTop[otherNode->getId()] = minDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        minDistFromTop[otherNode->getId()] = std::min(minDistFromTop[selectedNode->getId()] + 1, minDistFromTop[otherNode->getId()]);
+                    }
+
+                    if(maxDistFromTop[otherNode->getId()] == -1){
+                        maxDistFromTop[otherNode->getId()] = maxDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromTop[otherNode->getId()] = std::max(maxDistFromTop[selectedNode->getId()] + 1, maxDistFromTop[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        {
+            std::vector<Node*> sources = originalSources;
+            std::vector<int> counterRelease(nodes.size(), 0);
+
+            int currentPartitionId = 0;
+
+            while(sources.size()){
+                int idxSelectNode = 0;
+                for(int idxNode = 1 ; idxNode < int(sources.size()) ; ++idxNode){
+                    if(minDistFromTop[sources[idxNode]->getId()] < minDistFromTop[sources[idxSelectNode]->getId()]){
+                        idxSelectNode = idxNode;
+                    }
+                }
+
+                std::deque<Node*> partitionNodes;
+                partitionNodes.push_front(sources[idxSelectNode]);
+                std::swap(sources[idxSelectNode], sources[sources.size()-1]);
+                sources.pop_back();
+
+                int currentPartitionSize = 0;
+                while(partitionNodes.size() && currentPartitionSize < maxSize){
+                    Node* selectedNode = partitionNodes.front();
+                    partitionNodes.pop_front();
+
+                    selectedNode->setPartitionId(currentPartitionId);
+                    currentPartitionSize += 1;
+
+                    std::deque<Node*> nextNodes;
+                    for(const auto& otherNode : selectedNode->getSuccessors()){
+                        counterRelease[otherNode->getId()] += 1;
+                        assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                        if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                            nextNodes.push_back(otherNode);
+                        }
+                    }
+
+                    std::sort(nextNodes.begin(), nextNodes.end(), [&](const Node* n1, const Node* n2){
+                        return minDistFromTop[n1->getId()] < minDistFromTop[n2->getId()]
+                                || (minDistFromTop[n1->getId()] == minDistFromTop[n2->getId()]
+                                    && maxDistFromTop[n1->getId()] <= maxDistFromTop[n2->getId()]);
+                    });
+
+                    std::deque<Node*> nextNextNodes;
+                    while(nextNodes.size() && currentPartitionSize < maxSize){
+                        Node* selectedNextNode = nextNodes.front();
+                        nextNodes.pop_front();
+                        selectedNextNode->setPartitionId(currentPartitionId);
+                        currentPartitionSize += 1;
+
+                        for(const auto& otherNode : selectedNextNode->getSuccessors()){
+                            counterRelease[otherNode->getId()] += 1;
+                            assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                            if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                nextNextNodes.push_back(otherNode);
+                            }
+                        }
+                    }
+
+                    partitionNodes.insert(partitionNodes.end(), nextNodes.begin(), nextNodes.end());
+                    partitionNodes.insert(partitionNodes.end(), nextNextNodes.begin(), nextNextNodes.end());
+                }
+
+                sources.insert(sources.end(), partitionNodes.begin(), partitionNodes.end());
+
+                currentPartitionId += 1;
+            }
+        }
+    }
+
+
+    std::pair<int,double> estimateDegreeOfParallelism() const{
+        int maxSourcesSize = 0;
+        int sumSourcesSize = 0;
+
+        std::deque<Node*> sources;
+        for(auto& node : nodes){
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+            }
+        }
+
+        std::vector<int> counterRelease(nodes.size(), 0);
+
+        while(sources.size()){
+            maxSourcesSize = std::max(maxSourcesSize, int(sources.size()));
+            sumSourcesSize += int(sources.size());
+
+            Node* selectedNode = sources.front();
+            sources.pop_front();
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    sources.push_back(otherNode);
+                }
+            }
+        }
+
+        return std::pair<int,double>(maxSourcesSize, double(sumSourcesSize)/double(nodes.size()));
+    }
 
     Graph getPartitionGraph() const{
         std::vector<std::pair<int,int>> dependencyBetweenPartitions;

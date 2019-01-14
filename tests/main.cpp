@@ -84,24 +84,36 @@ std::vector<std::pair<int,int>> GenerateDoubleDepTreeTasks(const int inHeight){
 }
 
 int main(){    
-    //std::vector<std::pair<int,int>> someDeps = GenerateBinaryTreeTasks(5);
+    //std::vector<std::pair<int,int>> someDeps = GenerateBinaryTreeTasks(6);
     //std::vector<std::pair<int,int>> someDeps = GenerateDepTreeTasks(8);
-    std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(13);
+    std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(16);
 
     const int nbThreads = 2;
     const int partMinSize = 2;
-    const int partMaxSize = 2;
-    Graph aGraph(someDeps);
-    aGraph.partition(partMinSize,partMaxSize,nbThreads);
-    aGraph.saveToDot("/tmp/agraph.dot");
+    const int partMaxSize = 4;
+    {
+        Graph aGraph(someDeps);
+        aGraph.partitionRandom(partMaxSize);
+        Graph depGraph = aGraph.getPartitionGraph();
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+    }
+    {
+        Graph aGraph(someDeps);
+        aGraph.partition(partMinSize,partMaxSize,nbThreads);
+        aGraph.saveToDot("/tmp/agraph.dot");
 
-    Graph depGraph = aGraph.getPartitionGraph();
-    depGraph.saveToDot("/tmp/depgraph.dot");
+        Graph depGraph = aGraph.getPartitionGraph();
+        depGraph.saveToDot("/tmp/depgraph.dot");
 
-    int duration;
-    std::vector<Executor::Event> events;
-    std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-    Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after depth partitioning : " << degPar.first << "  " << degPar.second << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+    }
 
     return 0;
 }

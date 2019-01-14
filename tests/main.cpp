@@ -91,8 +91,12 @@ int main(){
     const int nbThreads = 2;
     const int partMinSize = 2;
     const int partMaxSize = 4;
+    std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
         Graph aGraph(someDeps);
+        std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";
+
         aGraph.partitionRandom(partMaxSize);
         Graph depGraph = aGraph.getPartitionGraph();
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();

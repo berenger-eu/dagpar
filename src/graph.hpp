@@ -131,16 +131,23 @@ public:
         }
     }
 
-    void partitionGreedy(const int maxSize, const bool useIntermediateStep = false){
+    void partitionGreedy(const int maxSize, const bool useAlternate = true, const bool useIntermediateStep = false){
         std::vector<int> minDistFromTop(nodes.size(), -1);
         std::vector<int> maxDistFromTop(nodes.size(), -1);
+        std::vector<int> maxDistFromRoot(nodes.size(), -1);
 
         std::vector<Node*> originalSources;
+        std::vector<Node*> originalRoot;
         for(auto& node : nodes){
+            node->setPartitionId(-1);
             if(node->getPredecessors().size() == 0){
                 originalSources.push_back(node.get());
                 minDistFromTop[node->getId()] = 0;
                 maxDistFromTop[node->getId()] = 0;
+            }
+            if(node->getSuccessors().size() == 0){
+                originalRoot.push_back(node.get());
+                maxDistFromRoot[node->getId()] = 0;
             }
         }
         {
@@ -174,6 +181,30 @@ public:
                 }
             }
         }
+        {
+            std::vector<Node*> root = originalRoot;
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(root.size()){
+                Node* selectedNode = root.back();
+                root.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getPredecessors()){
+                    if(maxDistFromRoot[otherNode->getId()] == -1){
+                        maxDistFromRoot[otherNode->getId()] = maxDistFromRoot[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromRoot[otherNode->getId()] = std::max(maxDistFromRoot[selectedNode->getId()] + 1, maxDistFromRoot[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getSuccessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getSuccessors().size())){
+                        root.push_back(otherNode);
+                    }
+                }
+            }
+        }
 
         {
             std::vector<Node*> sources = originalSources;
@@ -183,9 +214,26 @@ public:
 
             while(sources.size()){
                 int idxSelectNode = 0;
-                for(int idxNode = 1 ; idxNode < int(sources.size()) ; ++idxNode){
-                    if(minDistFromTop[sources[idxNode]->getId()] < minDistFromTop[sources[idxSelectNode]->getId()]){
-                        idxSelectNode = idxNode;
+                int nbReleases = 0;
+                for(int idxNode = 0 ; idxNode < int(sources.size()) ; ++idxNode){
+                    if(useAlternate == false){
+                        if(minDistFromTop[sources[idxNode]->getId()] < minDistFromTop[sources[idxSelectNode]->getId()]){
+                            idxSelectNode = idxNode;
+                        }
+                    }
+                    else{
+                        int nbPotentialRelease = 0;
+                        for(const auto& otherNode : sources[idxNode]->getSuccessors()){
+                            assert(counterRelease[otherNode->getId()] < int(otherNode->getPredecessors().size()));
+                            if(counterRelease[otherNode->getId()]+1 == int(otherNode->getPredecessors().size())){
+                                nbPotentialRelease += 1;
+                            }
+                        }
+                        if(nbReleases < nbPotentialRelease
+                                || (nbReleases == nbPotentialRelease
+                                      && maxDistFromRoot[sources[idxSelectNode]->getId()] < maxDistFromRoot[sources[idxNode]->getId()])){
+                            idxSelectNode = idxNode;
+                        }
                     }
                 }
 

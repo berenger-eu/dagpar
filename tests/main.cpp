@@ -171,6 +171,7 @@ int main(int argc, char** argv){
 
         aGraph.partitionRandom(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-rand.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-rand.dot -o /tmp/agraph-rand.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
@@ -185,10 +186,11 @@ int main(int argc, char** argv){
         Graph aGraph(someDeps.first, someDeps.second);
         aGraph.partitionGreedy(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-greedy.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-greedy.dot -o /tmp/agraph-greedy.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Degree of parallelism after greedy partitioning : " << degPar.first << "  " << degPar.second << "\n";
 
         int duration;
         std::vector<Executor::Event> events;
@@ -199,9 +201,11 @@ int main(int argc, char** argv){
         Graph aGraph(someDeps.first, someDeps.second);
         aGraph.partition(partMinSize,partMaxSize,nbThreads);
         aGraph.saveToDot("/tmp/agraph.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph.dot -o /tmp/agraph.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
         depGraph.saveToDot("/tmp/depgraph.dot");
+        std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph.dot -o /tmp/depgraph.pdf\n";
 
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after depth partitioning : " << degPar.first << "  " << degPar.second << "\n";

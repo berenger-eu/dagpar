@@ -3,7 +3,7 @@
 #include "graph.hpp"
 #include "executor.hpp"
 
-std::vector<std::pair<int,int>> GenerateBinaryTreeTasks(const int inHeight){
+std::pair<int, std::vector<std::pair<int,int>>> GenerateBinaryTreeTasks(const int inHeight){
     std::vector<std::pair<int,int>> someDeps;
     int cellsOffset = 0;
     for(int level = 1 ; level < inHeight ; ++level){
@@ -14,10 +14,10 @@ std::vector<std::pair<int,int>> GenerateBinaryTreeTasks(const int inHeight){
         }
         cellsOffset += nbCellsAtPreviousLevel;
     }
-    return someDeps;
+    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
 }
 
-std::vector<std::pair<int,int>> GenerateDepTreeTasks(const int inHeight){
+std::pair<int, std::vector<std::pair<int,int>>> GenerateDepTreeTasks(const int inHeight){
     std::vector<std::pair<int,int>> someDeps;
     int cellsOffset = 0;
     for(int level = 1 ; level < inHeight ; ++level){
@@ -35,10 +35,10 @@ std::vector<std::pair<int,int>> GenerateDepTreeTasks(const int inHeight){
 
         cellsOffset += nbCellsAtPreviousLevel;
     }
-    return someDeps;
+    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
 }
 
-std::vector<std::pair<int,int>> GenerateDoubleDepTreeTasks(const int inHeight){
+std::pair<int, std::vector<std::pair<int,int>>> GenerateDoubleDepTreeTasks(const int inHeight){
     std::vector<std::pair<int,int>> someDeps;
     int cellsOffset = 0;
     for(int level = 1 ; level < (inHeight+1)/2 ; ++level){
@@ -80,10 +80,10 @@ std::vector<std::pair<int,int>> GenerateDoubleDepTreeTasks(const int inHeight){
         cellsOffset += nbCellsAtPreviousLevel;
     }
 
-    return someDeps;
+    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
 }
 
-std::vector<std::pair<int,int>> Generate2DGrid(const int inGridDim){
+std::pair<int, std::vector<std::pair<int,int>>> Generate2DGrid(const int inGridDim){
     std::vector<std::pair<int,int>> someDeps;
     for(int idxRow = 1 ; idxRow < inGridDim ; ++idxRow){
         for(int idxCol = 1 ; idxCol < inGridDim ; ++idxCol){
@@ -91,31 +91,38 @@ std::vector<std::pair<int,int>> Generate2DGrid(const int inGridDim){
             someDeps.push_back(std::pair<int,int>{((idxCol-1)*inGridDim)+idxRow, (idxCol*inGridDim)+idxRow});
         }
     }
-    return someDeps;
+    return std::pair<int, std::vector<std::pair<int,int>>>(inGridDim*inGridDim,someDeps);
 }
 
 int main(){    
-    //std::vector<std::pair<int,int>> someDeps = GenerateBinaryTreeTasks(6);
-    //std::vector<std::pair<int,int>> someDeps = GenerateDepTreeTasks(8);
-    std::vector<std::pair<int,int>> someDeps = Generate2DGrid(8);
-    //std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(16);
+    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateBinaryTreeTasks(6);
+    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDepTreeTasks(8);
+    std::pair<int, std::vector<std::pair<int,int>>> someDeps = Generate2DGrid(8);
+    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDoubleDepTreeTasks(16);
 
     const int nbThreads = 2;
     const int partMinSize = 2;
     const int partMaxSize = 4;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
-        Graph aGraph(someDeps);
+        Graph aGraph(someDeps.first, someDeps.second);
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
         aGraph.partitionRandom(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-rand.dot");
+
         Graph depGraph = aGraph.getPartitionGraph();
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-rand.svg", events, nbThreads);
     }
     {
-        Graph aGraph(someDeps);
+        Graph aGraph(someDeps.first, someDeps.second);
         aGraph.partition(partMinSize,partMaxSize,nbThreads);
         aGraph.saveToDot("/tmp/agraph.dot");
 

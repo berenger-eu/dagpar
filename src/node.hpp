@@ -6,6 +6,11 @@
 #include <cassert>
 #include <algorithm>
 
+///////////////////////////////////////////////////////////
+///
+/// A node which has links to predecessors and successors
+///
+///////////////////////////////////////////////////////////
 class Node{
     std::list<Node*> successors;
     std::list<Node*> predecessors;

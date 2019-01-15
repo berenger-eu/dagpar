@@ -10,6 +10,11 @@
 
 #include "graph.hpp"
 
+///////////////////////////////////////////////////////////
+///
+/// To emulate the execution of a graph
+///
+///////////////////////////////////////////////////////////
 class Executor{
     static std::string ReplaceAllInString(std::string sentence, const std::string& itemToReplace, const std::string& inSubstitutionString){
         for(std::string::size_type idxFound = sentence.find(itemToReplace); idxFound != std::string::npos; idxFound = sentence.find(itemToReplace)){

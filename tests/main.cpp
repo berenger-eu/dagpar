@@ -3,6 +3,12 @@
 #include "graph.hpp"
 #include "executor.hpp"
 
+///////////////////////////////////////////////////////////
+///
+/// Methods to generate some graphs
+///
+///////////////////////////////////////////////////////////
+
 std::pair<int, std::vector<std::pair<int,int>>> GenerateBinaryTreeTasks(const int inHeight){
     std::vector<std::pair<int,int>> someDeps;
     int cellsOffset = 0;
@@ -94,11 +100,65 @@ std::pair<int, std::vector<std::pair<int,int>>> Generate2DGrid(const int inGridD
     return std::pair<int, std::vector<std::pair<int,int>>>(inGridDim*inGridDim,someDeps);
 }
 
-int main(){    
-    std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateBinaryTreeTasks(6);
-    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDepTreeTasks(8);
-    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = Generate2DGrid(8);
-    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDoubleDepTreeTasks(16);
+///////////////////////////////////////////////////////////
+///
+/// Main:
+/// Generate a graph
+/// Test the random method
+/// Test the greedy method
+/// Test the advanced method
+///
+///////////////////////////////////////////////////////////
+
+int main(int argc, char** argv){
+    std::vector<std::string> params;
+    params.insert(params.end(), argv, argv+argc);
+
+    const std::string helpContent = "[HELP] You can only pass the graph generation.\n"
+                                    "[HELP] $ ./main [generation method]\n"
+                                    "[HELP] Where generation method is among: tree, deptree, 2dgrid, doubletree\n";
+
+    if(params.size() > 2){
+        std::cout << "[ERROR] Invalid number of parameters.\n" << helpContent;
+        return 1;
+    }
+    if(params.size() == 2 && params[1] == "--help"){
+        std::cout << "[HELP] Asked for help.\n" << helpContent;
+        return 1;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    std::pair<int, std::vector<std::pair<int,int>>> someDeps;
+    if(params.size() < 2){
+        std::cout << "[INFO] use doubletree\n";
+        someDeps = GenerateDoubleDepTreeTasks(16);
+    }
+    else{
+        const std::vector<std::string> methodNames{"tree", "deptree", "2dgrid", "doubletree"};
+        const size_t choice = std::distance(methodNames.begin(), std::find(methodNames.begin(), methodNames.end(), params[1]));
+        switch(choice){
+        case 0:
+            std::cout << "[INFO] use tree\n";
+            someDeps = GenerateDepTreeTasks(8);
+            break;
+        case 1:
+            std::cout << "[INFO] use deptree\n";
+            someDeps = GenerateDoubleDepTreeTasks(16);
+            break;
+        case 2:
+            std::cout << "[INFO] use 2dgrid\n";
+            someDeps = Generate2DGrid(8);
+            break;
+        case 3:
+        default:
+            std::cout << "[INFO] use doubletree\n";
+            someDeps = GenerateDoubleDepTreeTasks(16);
+            break;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 2;
     const int partMinSize = 2;
@@ -120,6 +180,20 @@ int main(){
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-rand.svg", events, nbThreads);
+    }
+    {
+        Graph aGraph(someDeps.first, someDeps.second);
+        aGraph.partitionGreedy(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-greedy.dot");
+
+        Graph depGraph = aGraph.getPartitionGraph();
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-greedy.svg", events, nbThreads);
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);

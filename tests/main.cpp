@@ -83,10 +83,22 @@ std::vector<std::pair<int,int>> GenerateDoubleDepTreeTasks(const int inHeight){
     return someDeps;
 }
 
+std::vector<std::pair<int,int>> Generate2DGrid(const int inGridDim){
+    std::vector<std::pair<int,int>> someDeps;
+    for(int idxRow = 1 ; idxRow < inGridDim ; ++idxRow){
+        for(int idxCol = 1 ; idxCol < inGridDim ; ++idxCol){
+            someDeps.push_back(std::pair<int,int>{(idxCol*inGridDim)+idxRow-1, (idxCol*inGridDim)+idxRow});
+            someDeps.push_back(std::pair<int,int>{((idxCol-1)*inGridDim)+idxRow, (idxCol*inGridDim)+idxRow});
+        }
+    }
+    return someDeps;
+}
+
 int main(){    
     //std::vector<std::pair<int,int>> someDeps = GenerateBinaryTreeTasks(6);
     //std::vector<std::pair<int,int>> someDeps = GenerateDepTreeTasks(8);
-    std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(16);
+    std::vector<std::pair<int,int>> someDeps = Generate2DGrid(8);
+    //std::vector<std::pair<int,int>> someDeps = GenerateDoubleDepTreeTasks(16);
 
     const int nbThreads = 2;
     const int partMinSize = 2;

@@ -14,7 +14,7 @@ std::pair<int, std::vector<std::pair<int,int>>> GenerateBinaryTreeTasks(const in
         }
         cellsOffset += nbCellsAtPreviousLevel;
     }
-    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
+    return std::pair<int, std::vector<std::pair<int,int>>>(someDeps.back().second+1,someDeps);
 }
 
 std::pair<int, std::vector<std::pair<int,int>>> GenerateDepTreeTasks(const int inHeight){
@@ -35,7 +35,7 @@ std::pair<int, std::vector<std::pair<int,int>>> GenerateDepTreeTasks(const int i
 
         cellsOffset += nbCellsAtPreviousLevel;
     }
-    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
+    return std::pair<int, std::vector<std::pair<int,int>>>(someDeps.back().second+1,someDeps);
 }
 
 std::pair<int, std::vector<std::pair<int,int>>> GenerateDoubleDepTreeTasks(const int inHeight){
@@ -80,7 +80,7 @@ std::pair<int, std::vector<std::pair<int,int>>> GenerateDoubleDepTreeTasks(const
         cellsOffset += nbCellsAtPreviousLevel;
     }
 
-    return std::pair<int, std::vector<std::pair<int,int>>>(cellsOffset,someDeps);
+    return std::pair<int, std::vector<std::pair<int,int>>>(someDeps.back().second+1,someDeps);
 }
 
 std::pair<int, std::vector<std::pair<int,int>>> Generate2DGrid(const int inGridDim){
@@ -95,9 +95,9 @@ std::pair<int, std::vector<std::pair<int,int>>> Generate2DGrid(const int inGridD
 }
 
 int main(){    
-    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateBinaryTreeTasks(6);
+    std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateBinaryTreeTasks(6);
     //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDepTreeTasks(8);
-    std::pair<int, std::vector<std::pair<int,int>>> someDeps = Generate2DGrid(8);
+    //std::pair<int, std::vector<std::pair<int,int>>> someDeps = Generate2DGrid(8);
     //std::pair<int, std::vector<std::pair<int,int>>> someDeps = GenerateDoubleDepTreeTasks(16);
 
     const int nbThreads = 2;

@@ -293,7 +293,7 @@ public:
         }
     }
 
-    void partition(const int /*minSize*/, const int maxSize, const int /*degreeParallelism*/){
+    void partitionBacktrack(const int maxSize){
         std::vector<int> minDistFromTop(nodes.size(), -1);
         std::vector<int> maxDistFromTop(nodes.size(), -1);
         std::vector<int> maxDistFromRoot(nodes.size(), -1);
@@ -502,6 +502,95 @@ public:
                 }
 
                 currentPartitionId += 1;
+            }
+        }
+    }
+
+
+
+    void partition(const int minSize, const int maxSize, const int /*degreeParallelism*/){
+        assert(minSize <= maxSize);
+
+        std::vector<Node*> originalSources;
+        std::vector<Node*> originalRoot;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node.get());
+            }
+        }
+        {
+            std::set<Node*> sources(originalSources.begin(), originalSources.end());
+
+            std::vector<int> counterRelease(nodes.size(), 0);
+
+            int currentPartitionId = 0;
+
+            while(sources.size()){
+                Node* startingNode = nullptr;
+                int nbReleases = 0;
+
+                for(Node* potentialStartingNode : sources){
+                    std::deque<Node*> partitionNodes;
+                    partitionNodes.push_front(potentialStartingNode);
+
+                    std::unordered_map<int,int> counterReleaseOffset;
+
+                    int currentPartitionSize = 0;
+                    while(partitionNodes.size() && currentPartitionSize < maxSize){
+                        Node* selectedNode = partitionNodes.front();
+                        partitionNodes.pop_front();
+
+                        currentPartitionSize += 1;
+
+                        for(const auto& otherNode : selectedNode->getSuccessors()){
+                            counterReleaseOffset[otherNode->getId()] += 1;
+                            assert(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                            if(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                partitionNodes.push_back(otherNode);
+                            }
+                        }
+                    }
+
+                    if(startingNode == nullptr || nbReleases < currentPartitionSize){
+                        startingNode = potentialStartingNode;
+                        nbReleases = currentPartitionSize;
+                        if(nbReleases == maxSize){
+                            break;
+                        }
+                    }
+                }
+
+                /*if(minSize <= nbReleases)*/{
+                    startingNode->setPartitionId(currentPartitionId);
+
+                    std::deque<Node*> partitionNodes;
+                    partitionNodes.push_front(startingNode);
+                    sources.erase(startingNode);
+
+                    int currentPartitionSize = 0;
+                    while(partitionNodes.size() && currentPartitionSize < maxSize){
+                        Node* selectedNode = partitionNodes.front();
+                        partitionNodes.pop_front();
+
+                        selectedNode->setPartitionId(currentPartitionId);
+                        currentPartitionSize += 1;
+
+                        for(const auto& otherNode : selectedNode->getSuccessors()){
+                            counterRelease[otherNode->getId()] += 1;
+                            assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                            if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                partitionNodes.push_back(otherNode);
+                            }
+                        }
+                    }
+
+                    for(auto& nodeReadyNotInPart : partitionNodes){
+                        sources.insert(nodeReadyNotInPart);
+                    }
+
+                    currentPartitionId += 1;
+                }
             }
         }
     }

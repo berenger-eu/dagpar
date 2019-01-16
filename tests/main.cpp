@@ -204,6 +204,24 @@ int main(int argc, char** argv){
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
+        aGraph.partitionBacktrack(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-backtrack.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-backtrack.dot -o /tmp/agraph-backtrack.pdf\n";
+
+        Graph depGraph = aGraph.getPartitionGraph();
+        depGraph.saveToDot("/tmp/depgraph-backtrack.dot");
+        std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph-backtrack.dot -o /tmp/depgraph-backtrack.pdf\n";
+
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after backtrack partitioning : " << degPar.first << "  " << degPar.second << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-backtrack.svg", events, nbThreads);
+    }
+    {
+        Graph aGraph(someDeps.first, someDeps.second);
         aGraph.partition(partMinSize,partMaxSize,nbThreads);
         aGraph.saveToDot("/tmp/agraph.dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph.dot -o /tmp/agraph.pdf\n";
@@ -213,7 +231,7 @@ int main(int argc, char** argv){
         std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph.dot -o /tmp/depgraph.pdf\n";
 
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after depth partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Degree of parallelism after advanced partitioning : " << degPar.first << "  " << degPar.second << "\n";
 
         int duration;
         std::vector<Executor::Event> events;

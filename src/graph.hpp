@@ -77,7 +77,7 @@ public:
             }
 
             const auto& color = partitionColors[node->getPartitionId()];
-            dotFile << node->getId() << " [label=\"" << node->getId() << "|" << node->getCost() << "\", style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
+            dotFile << node->getId() << " [label=\"" << node->getId() << " [" << node->getCost() << "]\", style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
         }
 
 

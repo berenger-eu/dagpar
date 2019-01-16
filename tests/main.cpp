@@ -168,6 +168,8 @@ int main(int argc, char** argv){
         Graph aGraph(someDeps.first, someDeps.second);
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";
+        aGraph.saveToDot("/tmp/agraph-original.dot");
+        std::cout << "Generate pdf of the original graph with: dot -Tpdf /tmp/agraph-original.dot -o /tmp/agraph-original.pdf\n";
 
         aGraph.partitionRandom(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-rand.dot");
@@ -189,6 +191,9 @@ int main(int argc, char** argv){
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-greedy.dot -o /tmp/agraph-greedy.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
+        depGraph.saveToDot("/tmp/depgraph-greedy.dot");
+        std::cout << "Generate pdf of the final partition graph with greedy method with: dot -Tpdf /tmp/depgraph-greedy.dot -o /tmp/depgraph-greedy.pdf\n";
+
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after greedy partitioning : " << degPar.first << "  " << degPar.second << "\n";
 

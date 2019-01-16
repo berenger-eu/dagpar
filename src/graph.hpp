@@ -520,20 +520,22 @@ public:
             }
         }
         {
-            std::set<Node*> sources(originalSources.begin(), originalSources.end());
+            std::vector<Node*> sources(originalSources);
 
             std::vector<int> counterRelease(nodes.size(), 0);
 
             int currentPartitionId = 0;
 
             while(sources.size()){
-                Node* startingNode = nullptr;
+                int startingNodeIdx = -1;
                 int nbReleases = 0;
 
-                for(Node* potentialStartingNode : sources){
+                for(int potentialStartingNodeIdx = 0 ; potentialStartingNodeIdx < int(sources.size()) ; ++potentialStartingNodeIdx){
                     std::deque<Node*> partitionNodes;
-                    partitionNodes.push_front(potentialStartingNode);
-
+                    {
+                        Node* potentialStartingNode = sources[potentialStartingNodeIdx];
+                        partitionNodes.push_front(potentialStartingNode);
+                    }
                     std::unordered_map<int,int> counterReleaseOffset;
 
                     int currentPartitionSize = 0;
@@ -552,8 +554,8 @@ public:
                         }
                     }
 
-                    if(startingNode == nullptr || nbReleases < currentPartitionSize){
-                        startingNode = potentialStartingNode;
+                    if(startingNodeIdx == -1 || nbReleases < currentPartitionSize){
+                        startingNodeIdx = potentialStartingNodeIdx;
                         nbReleases = currentPartitionSize;
                         if(nbReleases == maxSize){
                             break;
@@ -561,12 +563,15 @@ public:
                     }
                 }
 
-                /*if(minSize <= nbReleases)*/{
-                    startingNode->setPartitionId(currentPartitionId);
-
+                if(minSize <= nbReleases || sources.size() == 1){
                     std::deque<Node*> partitionNodes;
-                    partitionNodes.push_front(startingNode);
-                    sources.erase(startingNode);
+                    {
+                        Node* startingNode = sources[startingNodeIdx];
+                        startingNode->setPartitionId(currentPartitionId);
+                        partitionNodes.push_front(startingNode);
+                        std::swap(sources[startingNodeIdx], sources[sources.size()-1]);
+                        sources.pop_back();
+                    }
 
                     int currentPartitionSize = 0;
                     while(partitionNodes.size() && currentPartitionSize < maxSize){
@@ -585,9 +590,100 @@ public:
                         }
                     }
 
-                    for(auto& nodeReadyNotInPart : partitionNodes){
-                        sources.insert(nodeReadyNotInPart);
+                    sources.insert(sources.end(), partitionNodes.begin(), partitionNodes.end());
+
+                    currentPartitionId += 1;
+                }
+                else{
+                    std::vector<std::set<int>> releasableNodes(sources.size());
+                    std::vector<std::set<int>> lockedNodes(sources.size());
+
+                    for(int potentialStartingNodeIdx = 0 ; potentialStartingNodeIdx < int(sources.size()) ; ++potentialStartingNodeIdx){
+                        std::deque<Node*> partitionNodes;
+                        {
+                            Node* potentialStartingNode = sources[potentialStartingNodeIdx];
+                            partitionNodes.push_front(potentialStartingNode);
+                        }
+                        std::unordered_map<int,int> counterReleaseOffset;
+
+                        int currentPartitionSize = 0;
+                        while(partitionNodes.size() && currentPartitionSize < maxSize){
+                            Node* selectedNode = partitionNodes.front();
+                            partitionNodes.pop_front();
+
+                            currentPartitionSize += 1;
+
+                            for(const auto& otherNode : selectedNode->getSuccessors()){
+                                counterReleaseOffset[otherNode->getId()] += 1;
+                                assert(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                                if(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                    partitionNodes.push_back(otherNode);
+                                    releasableNodes[potentialStartingNodeIdx].insert(otherNode->getId());
+                                }
+                                else{
+                                    lockedNodes[potentialStartingNodeIdx].insert(otherNode->getId());
+                                }
+                            }
+                        }
                     }
+
+                    int idxBest1 = -1;
+                    int idxBest2 = -1;
+                    double bestScore = 0;
+
+                    for(int idxNode1 = 0 ; idxNode1 < int(sources.size())-1 ; ++idxNode1){
+                        for(int idxNode2 = idxNode1+1 ; idxNode2 < int(sources.size()) ; ++idxNode2){
+                            std::set<int> locksIntersection;
+                            std::set_intersection(lockedNodes[idxNode1].begin(),lockedNodes[idxNode1].end(),
+                                                  lockedNodes[idxNode2].begin(),lockedNodes[idxNode2].end(),
+                                              std::inserter(locksIntersection,locksIntersection.begin()));
+
+                            const int nbSameLocks = int(locksIntersection.size());
+                            const int score = nbSameLocks;// + int(releasableNodes[idxNode1].size()) + int(releasableNodes[idxNode2].size());
+
+                            if(bestScore < score){
+                                idxBest1 = idxNode1;
+                                idxBest2 = idxNode2;
+                            }
+                        }
+                    }
+
+
+                    std::deque<Node*> partitionNodes;
+                    {
+                        Node* startingNode1 = sources[idxBest1];
+                        startingNode1->setPartitionId(currentPartitionId);
+                        partitionNodes.push_front(startingNode1);
+                        std::swap(sources[idxBest1], sources[sources.size()-1]);
+                        sources.pop_back();
+
+                        Node* startingNode2 = sources[idxBest2];
+                        startingNode2->setPartitionId(currentPartitionId);
+                        partitionNodes.push_front(startingNode2);
+                        std::swap(sources[idxBest2], sources[sources.size()-1]);
+                        sources.pop_back();
+                    }
+
+                    int currentPartitionSize = 0;
+                    while(partitionNodes.size() && currentPartitionSize < maxSize){
+                        Node* selectedNode = partitionNodes.front();
+                        partitionNodes.pop_front();
+
+                        selectedNode->setPartitionId(currentPartitionId);
+                        currentPartitionSize += 1;
+
+                        for(const auto& otherNode : selectedNode->getSuccessors()){
+                            counterRelease[otherNode->getId()] += 1;
+                            assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                            if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                partitionNodes.push_back(otherNode);
+                            }
+                        }
+                    }
+
+                    // TODO : possible add another sources
+
+                    sources.insert(sources.end(), partitionNodes.begin(), partitionNodes.end());
 
                     currentPartitionId += 1;
                 }

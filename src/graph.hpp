@@ -61,8 +61,6 @@ public:
 
     void saveToDot(const std::string& inFilename){
         std::unordered_map<int, std::array<double, 3>> partitionColors;
-        std::mt19937 rng(0);
-        std::uniform_real_distribution<double> uni(0,1);
 
         std::ofstream dotFile(inFilename);
         dotFile << "digraph G {\n";
@@ -73,6 +71,8 @@ public:
             }
 
             if(partitionColors.find(node->getPartitionId()) == partitionColors.end()){
+                std::mt19937 rng(node->getPartitionId());
+                std::uniform_real_distribution<double> uni(0,1);
                 partitionColors[node->getPartitionId()] = std::array<double, 3>{uni(rng), uni(rng), uni(rng)};
             }
 

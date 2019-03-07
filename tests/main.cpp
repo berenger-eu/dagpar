@@ -100,6 +100,47 @@ std::pair<int, std::vector<std::pair<int,int>>> Generate2DGrid(const int inGridD
     return std::pair<int, std::vector<std::pair<int,int>>>(inGridDim*inGridDim,someDeps);
 }
 
+std::pair<int, std::vector<std::pair<int,int>>> LoadEdgeFile(const std::string& inFilename){
+    std::ifstream edgeFile(inFilename);
+
+    if(edgeFile.is_open() == false){
+        std::cout << "[ERROR] Cannot load file " << inFilename << std::endl;
+        std::cout << "[ERROR] Return empty graph" << std::endl;
+        return std::pair<int, std::vector<std::pair<int,int>>>();
+    }
+
+    std::pair<int, std::vector<std::pair<int,int>>> edges;
+
+    int nbEdges;
+    edgeFile >> nbEdges;
+
+    std::cout << "[INFO] There are " << nbEdges << " edges" << std::endl;
+    edges.second.reserve(nbEdges);
+
+    int maxNodeId = -1;
+
+    int edgeIdx, edgeSrc, edgeDst;
+    while (edgeFile >> edgeIdx >> edgeSrc >> edgeDst){
+        if(edgeIdx != int(edges.second.size())){
+            std::cout << "[ERROR] Bad idx, is " << edgeIdx << " should be " << edges.second.size() << std::endl;
+            std::cout << "[ERROR] Return empty graph" << std::endl;
+            return std::pair<int, std::vector<std::pair<int,int>>>();
+        }
+        if(nbEdges <= edgeIdx){
+            std::cout << "[ERROR] Bad idx, is " << edgeIdx << " which is largest than the expected number of edges" << std::endl;
+            std::cout << "[ERROR] Return empty graph" << std::endl;
+            return std::pair<int, std::vector<std::pair<int,int>>>();
+        }
+
+        edges.second.emplace_back(edgeSrc, edgeDst);
+        maxNodeId = std::max(maxNodeId, std::max(edgeSrc, edgeDst));
+    }
+
+    edges.first = maxNodeId+1;
+
+    return edges;
+}
+
 ///////////////////////////////////////////////////////////
 ///
 /// Main:
@@ -114,9 +155,9 @@ int main(int argc, char** argv){
     std::vector<std::string> params;
     params.insert(params.end(), argv, argv+argc);
 
-    const std::string helpContent = "[HELP] You can only pass the graph generation.\n"
+    const std::string helpContent = "[HELP] You can only pass the graph generation or a filename.\n"
                                     "[HELP] $ ./main [generation method]\n"
-                                    "[HELP] Where generation method is among: tree, deptree, 2dgrid, doubletree\n";
+                                    "[HELP] Where generation method is among: tree, deptree, 2dgrid, doubletree, filename\n";
 
     if(params.size() > 2){
         std::cout << "[ERROR] Invalid number of parameters.\n" << helpContent;
@@ -151,9 +192,12 @@ int main(int argc, char** argv){
             someDeps = Generate2DGrid(8);
             break;
         case 3:
-        default:
             std::cout << "[INFO] use doubletree\n";
             someDeps = GenerateDoubleDepTreeTasks(16);
+            break;
+        default:
+            std::cout << "[INFO] load " << params[1] << "\n";
+            someDeps = LoadEdgeFile(params[1]);
             break;
         }
     }

@@ -29,7 +29,7 @@ public:
         }
 
         for(const auto& dep : inDependencyList){
-            assert(dep.first < dep.second);
+            //Is not true when index are not in order: assert(dep.first < dep.second);
             assert(dep.second < inNodes);
             nodes[dep.first]->addSuccessor(nodes[dep.second].get());
             nodes[dep.second]->addPredecessor(nodes[dep.first].get());
@@ -379,7 +379,7 @@ public:
                 int currentPartitionSize = 0;
                 std::deque<Node*> partitionNodes;
                 {
-                    Node* startingNode = *sources.begin();
+                    Node* startingNode = (*sources.begin());
                     int nbReleases = 0;
                     for(Node* potentialStartingNode : sources){
                         int nbPotentialRelease = 0;
@@ -405,13 +405,14 @@ public:
 
                 std::set<Node*> pathToPrivilegiate;
                 while(partitionNodes.size()){
-                    std::deque<Node*> notReadyNextNodes;
+                    std::set<Node*> notReadyNextNodes;
                     {
                         std::deque<Node*> nextNodes;
                         std::deque<Node*> nextNodesToPrivilegiate;
                         {
                             Node* selectedNode = partitionNodes.front();
                             partitionNodes.pop_front();
+                            assert(selectedNode->getPartitionId() == currentPartitionId);
 
                             for(const auto& otherNode : selectedNode->getSuccessors()){
                                 counterRelease[otherNode->getId()] += 1;
@@ -427,7 +428,7 @@ public:
                                 }
                                 else{
                                     if(pathToPrivilegiate.find(otherNode) == pathToPrivilegiate.end()){
-                                        notReadyNextNodes.push_back(otherNode);
+                                        notReadyNextNodes.insert(otherNode);
                                     }
                                 }
                             }
@@ -470,8 +471,8 @@ public:
                         }
 
                         while(notReadyNextNodes.size()){
-                            Node* backtrackNode = notReadyNextNodes.front();
-                            notReadyNextNodes.pop_front();
+                            Node* backtrackNode = (*notReadyNextNodes.begin());
+                            notReadyNextNodes.erase(backtrackNode);
 
                             for(const auto& backtrackPrevNode : backtrackNode->getPredecessors()){
                                 if(counterRelease[backtrackPrevNode->getId()] == int(backtrackPrevNode->getPredecessors().size())){
@@ -480,10 +481,11 @@ public:
                                         sourcesToAdd.insert(backtrackPrevNode);
                                     }
                                 }
-                                else{
+                                else if(notReadyNextNodes.find(backtrackPrevNode) == notReadyNextNodes.end()
+                                        && pathToPrivilegiate.find(backtrackPrevNode) == pathToPrivilegiate.end()){
                                     assert(backtrackPrevNode->getPartitionId() == -1);
                                     pathToPrivilegiate.insert(backtrackPrevNode);
-                                    notReadyNextNodes.push_back(backtrackPrevNode);
+                                    notReadyNextNodes.insert(backtrackPrevNode);
                                 }
                             }
                         }

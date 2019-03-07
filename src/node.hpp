@@ -45,13 +45,13 @@ public:
     }
 
     void addSuccessor(Node* next){
-        assert(id < next->id);
+        //Is not true when index are not in order: assert(id < next->id);
         assert(std::find(successors.begin(), successors.end(), next) == successors.end());
         successors.push_back(next);
     }
 
     void addPredecessor(Node* prev){
-        assert(prev->id < id);
+        //Is not true when index are not in order: assert(prev->id < id);
         assert(std::find(predecessors.begin(), predecessors.end(), prev) == predecessors.end());
         predecessors.push_back(prev);
     }

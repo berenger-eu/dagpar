@@ -38,8 +38,8 @@ public:
 
     explicit Graph(const int inDependencyList[], const int inNbDep){
         for(int idxDep = 0 ; idxDep < inNbDep ; ++idxDep){
-            const int depSrc = inDependencyList[inNbDep*2+0];
-            const int depDest = inDependencyList[inNbDep*2+1];
+            const int depSrc = inDependencyList[idxDep*2+0];
+            const int depDest = inDependencyList[idxDep*2+1];
 
             if(int(nodes.size()) <= std::max(depSrc,depDest)){
                 const int currentNbNodes = std::max(depSrc,depDest) + 1;

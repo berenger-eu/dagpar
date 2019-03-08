@@ -555,6 +555,7 @@ public:
                     std::deque<Node*> partitionNodes;
                     {
                         Node* potentialStartingNode = sources[potentialStartingNodeIdx];
+                        assert(potentialStartingNode->getPartitionId() == -1);
                         partitionNodes.push_front(potentialStartingNode);
                     }
                     std::unordered_map<int,int> counterReleaseOffset;
@@ -588,6 +589,7 @@ public:
                     std::deque<Node*> partitionNodes;
                     {
                         Node* startingNode = sources[startingNodeIdx];
+                        assert(startingNode->getPartitionId() == -1);
                         startingNode->setPartitionId(currentPartitionId);
                         partitionNodes.push_front(startingNode);
                         std::swap(sources[startingNodeIdx], sources[sources.size()-1]);
@@ -606,6 +608,7 @@ public:
                             counterRelease[otherNode->getId()] += 1;
                             assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
                             if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                assert(otherNode->getPartitionId() == -1);
                                 partitionNodes.push_back(otherNode);
                             }
                         }
@@ -673,12 +676,17 @@ public:
                     std::deque<Node*> partitionNodes;
                     {
                         Node* startingNode1 = sources[idxBest1];
+                        assert(startingNode1->getPartitionId() == -1);
                         startingNode1->setPartitionId(currentPartitionId);
                         partitionNodes.push_front(startingNode1);
                         std::swap(sources[idxBest1], sources[sources.size()-1]);
+                        if(idxBest2 == int(sources.size()-1)){
+                            idxBest2 = idxBest1;
+                        }
                         sources.pop_back();
 
                         Node* startingNode2 = sources[idxBest2];
+                        assert(startingNode2->getPartitionId() == -1);
                         startingNode2->setPartitionId(currentPartitionId);
                         partitionNodes.push_front(startingNode2);
                         std::swap(sources[idxBest2], sources[sources.size()-1]);
@@ -697,6 +705,7 @@ public:
                             counterRelease[otherNode->getId()] += 1;
                             assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
                             if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                assert(otherNode->getPartitionId() == -1);
                                 partitionNodes.push_back(otherNode);
                             }
                         }

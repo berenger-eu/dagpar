@@ -36,6 +36,25 @@ public:
         }
     }
 
+    explicit Graph(const int inDependencyList[], const int inNbDep){
+        for(int idxDep = 0 ; idxDep < inNbDep ; ++idxDep){
+            const int depSrc = inDependencyList[inNbDep*2+0];
+            const int depDest = inDependencyList[inNbDep*2+1];
+
+            if(int(nodes.size()) <= std::max(depSrc,depDest)){
+                const int currentNbNodes = std::max(depSrc,depDest) + 1;
+                const int pastNbNodes = int(nodes.size());
+                nodes.resize(currentNbNodes);
+                for(int idxNode = pastNbNodes ; idxNode < currentNbNodes ; ++idxNode){
+                    nodes[idxNode].reset(new Node(idxNode));
+                }
+            }
+
+            nodes[depSrc]->addSuccessor(nodes[depDest].get());
+            nodes[depDest]->addPredecessor(nodes[depSrc].get());
+        }
+    }
+
 
     Graph(const int inNodes,
           const std::vector<std::pair<int,int>>& inDependencyList,
@@ -510,7 +529,7 @@ public:
 
 
 
-    void partition(const int minSize, const int maxSize, const int /*degreeParallelism*/){
+    void partition(const int minSize, const int maxSize){
         assert(minSize <= maxSize);
 
         std::vector<Node*> originalSources;
@@ -723,6 +742,38 @@ public:
         }
 
         return std::pair<int,double>(maxSourcesSize, double(sumSourcesSize)/double(nodes.size()));
+    }
+
+    bool isDag() const {
+        std::deque<Node*> sources;
+        for(auto& node : nodes){
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+            }
+        }
+
+        std::set<Node*> alreadyVisistedNodes;
+        std::vector<int> counterRelease(nodes.size(), 0);
+
+        while(sources.size()){
+            Node* selectedNode = sources.front();
+            sources.pop_front();
+
+            alreadyVisistedNodes.insert(selectedNode);
+
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    if(alreadyVisistedNodes.find(otherNode) != alreadyVisistedNodes.end()){
+                        return false;
+                    }
+                    sources.push_back(otherNode);
+                }
+            }
+        }
+
+        return true;
     }
 
     Graph getPartitionGraph() const{

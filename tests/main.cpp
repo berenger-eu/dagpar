@@ -210,6 +210,7 @@ int main(int argc, char** argv){
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
         Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";
         aGraph.saveToDot("/tmp/agraph-original.dot");
@@ -220,6 +221,7 @@ int main(int argc, char** argv){
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-rand.dot -o /tmp/agraph-rand.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
 
@@ -230,11 +232,13 @@ int main(int argc, char** argv){
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
         aGraph.partitionGreedy(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-greedy.dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-greedy.dot -o /tmp/agraph-greedy.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
         depGraph.saveToDot("/tmp/depgraph-greedy.dot");
         std::cout << "Generate pdf of the final partition graph with greedy method with: dot -Tpdf /tmp/depgraph-greedy.dot -o /tmp/depgraph-greedy.pdf\n";
 
@@ -248,11 +252,13 @@ int main(int argc, char** argv){
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
         aGraph.partitionBacktrack(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-backtrack.dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-backtrack.dot -o /tmp/agraph-backtrack.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
         depGraph.saveToDot("/tmp/depgraph-backtrack.dot");
         std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph-backtrack.dot -o /tmp/depgraph-backtrack.pdf\n";
 
@@ -266,11 +272,13 @@ int main(int argc, char** argv){
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
-        aGraph.partition(partMinSize,partMaxSize,nbThreads);
+        assert(aGraph.isDag());
+        aGraph.partition(partMinSize,partMaxSize);
         aGraph.saveToDot("/tmp/agraph.dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph.dot -o /tmp/agraph.pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
         depGraph.saveToDot("/tmp/depgraph.dot");
         std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph.dot -o /tmp/depgraph.pdf\n";
 

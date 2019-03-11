@@ -619,100 +619,135 @@ public:
                     currentPartitionId += 1;
                 }
                 else{
-                    std::vector<std::set<int>> releasableNodes(sources.size());
-                    std::vector<std::set<int>> lockedNodes(sources.size());
+                    std::set<int> currentPartitionLocked;
+                    std::deque<Node*> partitionNodes;
+                    int currentPartitionSize = 0;
+                    while(currentPartitionSize < minSize && int(sources.size())){
+                        assert(partitionNodes.size() == 0);
 
-                    for(int potentialStartingNodeIdx = 0 ; potentialStartingNodeIdx < int(sources.size()) ; ++potentialStartingNodeIdx){
-                        std::deque<Node*> partitionNodes;
-                        {
-                            Node* potentialStartingNode = sources[potentialStartingNodeIdx];
-                            partitionNodes.push_front(potentialStartingNode);
+                        std::vector<std::set<int>> releasableNodes(sources.size());
+                        std::vector<std::set<int>> lockedNodes(sources.size());
+
+                        for(int potentialStartingNodeIdx = 0 ; potentialStartingNodeIdx < int(sources.size()) ; ++potentialStartingNodeIdx){
+                            std::deque<Node*> partitionNodesTest;
+                            {
+                                Node* potentialStartingNode = sources[potentialStartingNodeIdx];
+                                partitionNodesTest.push_front(potentialStartingNode);
+                            }
+                            std::unordered_map<int,int> counterReleaseOffset;
+
+                            int currentPartitionSizeTest = 0;
+                            while(partitionNodesTest.size() && currentPartitionSizeTest < maxSize){
+                                Node* selectedNode = partitionNodesTest.front();
+                                partitionNodesTest.pop_front();
+
+                                currentPartitionSizeTest += 1;
+
+                                for(const auto& otherNode : selectedNode->getSuccessors()){
+                                    counterReleaseOffset[otherNode->getId()] += 1;
+                                    assert(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                                    if(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                        partitionNodesTest.push_back(otherNode);
+                                        releasableNodes[potentialStartingNodeIdx].insert(otherNode->getId());
+                                    }
+                                    else{
+                                        lockedNodes[potentialStartingNodeIdx].insert(otherNode->getId());
+                                    }
+                                }
+                            }
                         }
-                        std::unordered_map<int,int> counterReleaseOffset;
 
-                        int currentPartitionSize = 0;
+                        if(currentPartitionLocked.empty()){
+                            int idxBest1 = -1;
+                            int idxBest2 = -1;
+                            double bestScore = 0;
+
+                            for(int idxNode1 = 0 ; idxNode1 < int(sources.size())-1 ; ++idxNode1){
+                                for(int idxNode2 = idxNode1+1 ; idxNode2 < int(sources.size()) ; ++idxNode2){
+                                    std::set<int> locksIntersection;
+                                    std::set_intersection(lockedNodes[idxNode1].begin(),lockedNodes[idxNode1].end(),
+                                                          lockedNodes[idxNode2].begin(),lockedNodes[idxNode2].end(),
+                                                      std::inserter(locksIntersection,locksIntersection.begin()));
+
+                                    const int nbSameLocks = int(locksIntersection.size());
+                                    const int score = nbSameLocks;// + int(releasableNodes[idxNode1].size()) + int(releasableNodes[idxNode2].size());
+
+                                    if(bestScore < score){
+                                        idxBest1 = idxNode1;
+                                        idxBest2 = idxNode2;
+                                    }
+                                }
+                            }
+
+                            currentPartitionLocked = lockedNodes[idxBest1];
+                            currentPartitionLocked.insert(lockedNodes[idxBest2].begin(), lockedNodes[idxBest2].end());
+
+                            {
+                                Node* startingNode1 = sources[idxBest1];
+                                assert(startingNode1->getPartitionId() == -1);
+                                startingNode1->setPartitionId(currentPartitionId);
+                                partitionNodes.push_front(startingNode1);
+                                std::swap(sources[idxBest1], sources[sources.size()-1]);
+                                if(idxBest2 == int(sources.size()-1)){
+                                    idxBest2 = idxBest1;
+                                }
+                                sources.pop_back();
+
+                                Node* startingNode2 = sources[idxBest2];
+                                assert(startingNode2->getPartitionId() == -1);
+                                startingNode2->setPartitionId(currentPartitionId);
+                                partitionNodes.push_front(startingNode2);
+                                std::swap(sources[idxBest2], sources[sources.size()-1]);
+                                sources.pop_back();
+                            }
+                        }
+                        else{
+                            int idxBest1 = -1;
+                            double bestScore = 0;
+
+                            for(int idxNode1 = 0 ; idxNode1 < int(sources.size()) ; ++idxNode1){
+                                std::set<int> locksIntersection;
+                                std::set_intersection(lockedNodes[idxNode1].begin(),lockedNodes[idxNode1].end(),
+                                                      currentPartitionLocked.begin(),currentPartitionLocked.end(),
+                                                  std::inserter(locksIntersection,locksIntersection.begin()));
+
+                                const int nbSameLocks = int(locksIntersection.size());
+                                const int score = nbSameLocks;// + int(releasableNodes[idxNode1].size()) + int(releasableNodes[idxNode2].size());
+
+                                if(bestScore < score){
+                                    idxBest1 = idxNode1;
+                                }
+                            }
+
+                            currentPartitionLocked.insert(lockedNodes[idxBest1].begin(), lockedNodes[idxBest1].end());
+
+                            Node* startingNode1 = sources[idxBest1];
+                            assert(startingNode1->getPartitionId() == -1);
+                            startingNode1->setPartitionId(currentPartitionId);
+                            partitionNodes.push_front(startingNode1);
+                            std::swap(sources[idxBest1], sources[sources.size()-1]);
+                            sources.pop_back();
+                        }
+
                         while(partitionNodes.size() && currentPartitionSize < maxSize){
                             Node* selectedNode = partitionNodes.front();
                             partitionNodes.pop_front();
 
+                            selectedNode->setPartitionId(currentPartitionId);
                             currentPartitionSize += 1;
 
                             for(const auto& otherNode : selectedNode->getSuccessors()){
-                                counterReleaseOffset[otherNode->getId()] += 1;
-                                assert(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
-                                if(counterRelease[otherNode->getId()] + counterReleaseOffset[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                counterRelease[otherNode->getId()] += 1;
+                                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                                    assert(otherNode->getPartitionId() == -1);
                                     partitionNodes.push_back(otherNode);
-                                    releasableNodes[potentialStartingNodeIdx].insert(otherNode->getId());
-                                }
-                                else{
-                                    lockedNodes[potentialStartingNodeIdx].insert(otherNode->getId());
                                 }
                             }
                         }
+
                     }
-
-                    int idxBest1 = -1;
-                    int idxBest2 = -1;
-                    double bestScore = 0;
-
-                    for(int idxNode1 = 0 ; idxNode1 < int(sources.size())-1 ; ++idxNode1){
-                        for(int idxNode2 = idxNode1+1 ; idxNode2 < int(sources.size()) ; ++idxNode2){
-                            std::set<int> locksIntersection;
-                            std::set_intersection(lockedNodes[idxNode1].begin(),lockedNodes[idxNode1].end(),
-                                                  lockedNodes[idxNode2].begin(),lockedNodes[idxNode2].end(),
-                                              std::inserter(locksIntersection,locksIntersection.begin()));
-
-                            const int nbSameLocks = int(locksIntersection.size());
-                            const int score = nbSameLocks;// + int(releasableNodes[idxNode1].size()) + int(releasableNodes[idxNode2].size());
-
-                            if(bestScore < score){
-                                idxBest1 = idxNode1;
-                                idxBest2 = idxNode2;
-                            }
-                        }
-                    }
-
-
-                    std::deque<Node*> partitionNodes;
-                    {
-                        Node* startingNode1 = sources[idxBest1];
-                        assert(startingNode1->getPartitionId() == -1);
-                        startingNode1->setPartitionId(currentPartitionId);
-                        partitionNodes.push_front(startingNode1);
-                        std::swap(sources[idxBest1], sources[sources.size()-1]);
-                        if(idxBest2 == int(sources.size()-1)){
-                            idxBest2 = idxBest1;
-                        }
-                        sources.pop_back();
-
-                        Node* startingNode2 = sources[idxBest2];
-                        assert(startingNode2->getPartitionId() == -1);
-                        startingNode2->setPartitionId(currentPartitionId);
-                        partitionNodes.push_front(startingNode2);
-                        std::swap(sources[idxBest2], sources[sources.size()-1]);
-                        sources.pop_back();
-                    }
-
-                    int currentPartitionSize = 0;
-                    while(partitionNodes.size() && currentPartitionSize < maxSize){
-                        Node* selectedNode = partitionNodes.front();
-                        partitionNodes.pop_front();
-
-                        selectedNode->setPartitionId(currentPartitionId);
-                        currentPartitionSize += 1;
-
-                        for(const auto& otherNode : selectedNode->getSuccessors()){
-                            counterRelease[otherNode->getId()] += 1;
-                            assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
-                            if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
-                                assert(otherNode->getPartitionId() == -1);
-                                partitionNodes.push_back(otherNode);
-                            }
-                        }
-                    }
-
-                    // TODO : possible add another sources
-
+                    assert(partitionNodes.empty() || currentPartitionSize == maxSize);
                     sources.insert(sources.end(), partitionNodes.begin(), partitionNodes.end());
 
                     currentPartitionId += 1;

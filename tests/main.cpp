@@ -224,6 +224,7 @@ int main(int argc, char** argv){
         assert(depGraph.isDag());
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
         int duration;
         std::vector<Executor::Event> events;
@@ -244,6 +245,7 @@ int main(int argc, char** argv){
 
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after greedy partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
         int duration;
         std::vector<Executor::Event> events;
@@ -264,6 +266,7 @@ int main(int argc, char** argv){
 
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after backtrack partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
         int duration;
         std::vector<Executor::Event> events;
@@ -284,6 +287,7 @@ int main(int argc, char** argv){
 
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after advanced partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
         int duration;
         std::vector<Executor::Event> events;

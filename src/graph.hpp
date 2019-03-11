@@ -658,8 +658,9 @@ public:
                         }
 
                         if(currentPartitionLocked.empty()){
-                            int idxBest1 = -1;
-                            int idxBest2 = -1;
+                            assert(sources.size() >= 2);
+                            int idxBest1 = 0;
+                            int idxBest2 = 1;
                             double bestScore = 0;
 
                             for(int idxNode1 = 0 ; idxNode1 < int(sources.size())-1 ; ++idxNode1){
@@ -702,7 +703,7 @@ public:
                             }
                         }
                         else{
-                            int idxBest1 = -1;
+                            int idxBest1 = 0;
                             double bestScore = 0;
 
                             for(int idxNode1 = 0 ; idxNode1 < int(sources.size()) ; ++idxNode1){

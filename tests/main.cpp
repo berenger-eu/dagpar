@@ -205,8 +205,8 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 2;
-    const int partMinSize = 2;
-    const int partMaxSize = 4;
+    const int partMinSize = 40;
+    const int partMaxSize = 40;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
         Graph aGraph(someDeps.first, someDeps.second);

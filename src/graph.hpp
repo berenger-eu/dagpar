@@ -657,8 +657,7 @@ public:
                             }
                         }
 
-                        if(currentPartitionLocked.empty()){
-                            assert(sources.size() >= 2);
+                        if(currentPartitionLocked.empty() && sources.size() >= 2){
                             int idxBest1 = 0;
                             int idxBest2 = 1;
                             double bestScore = 0;

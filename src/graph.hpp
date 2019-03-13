@@ -790,34 +790,39 @@ public:
 
     bool isDag() const {
         std::deque<Node*> sources;
+        std::set<Node*> alreadyVisistedNodes;
         for(auto& node : nodes){
             if(node->getPredecessors().size() == 0){
                 sources.push_back(node.get());
+                alreadyVisistedNodes.insert(node.get());
             }
         }
 
-        std::set<Node*> alreadyVisistedNodes;
         std::vector<int> counterRelease(nodes.size(), 0);
 
         while(sources.size()){
             Node* selectedNode = sources.front();
             sources.pop_front();
 
-            alreadyVisistedNodes.insert(selectedNode);
 
             for(const auto& otherNode : selectedNode->getSuccessors()){
                 counterRelease[otherNode->getId()] += 1;
-                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+
+                if(counterRelease[otherNode->getId()] > int(otherNode->getPredecessors().size())){
+                    return false;
+                }
+
                 if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
                     if(alreadyVisistedNodes.find(otherNode) != alreadyVisistedNodes.end()){
                         return false;
                     }
                     sources.push_back(otherNode);
+                    alreadyVisistedNodes.insert(otherNode);
                 }
             }
         }
 
-        return true;
+        return alreadyVisistedNodes.size() == nodes.size();
     }
 
     Graph getPartitionGraph() const{
@@ -831,6 +836,8 @@ public:
                     dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
                 }
             }
+
+            assert(node->getPartitionId() != -1);
 
             if(int(partitionCosts.size()) <= node->getPartitionId()){
                 partitionCosts.resize(node->getPartitionId()+1);

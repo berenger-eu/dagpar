@@ -14,7 +14,7 @@ option(DAGPAR_USE_COVERAGE "Should be ON to enable code coverage" OFF)
 
 if( DAGPAR_USE_COVERAGE )
     message(STATUS "Main -- Use code coverage")
-    set(DAGPAR_EXTRA_FLAG "${SPETABARU_CXX_FLAGS} -g -O0 --coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 --coverage")
     list(APPEND DAGPAR_LIBRARIES gcov)
     # Then one can use these commande:
     # lcov --directory CMakeFiles/ -c -o coverage-rapport.info

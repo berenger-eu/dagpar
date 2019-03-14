@@ -66,11 +66,29 @@ int main(int argc, char** argv){
         }
     }
 
+    {
+        const int cutGraphLimit = 3000;
+        if(cutGraphLimit < someDeps.first){
+            int idxEdge = 0;
+            while(idxEdge < int(someDeps.second.size())){
+                if(cutGraphLimit <= someDeps.second[idxEdge].first
+                        || cutGraphLimit <= someDeps.second[idxEdge].second){
+                    someDeps.second[idxEdge] = someDeps.second.back();
+                    someDeps.second.pop_back();
+                }
+                else{
+                    idxEdge += 1;
+                }
+            }
+            someDeps.first = cutGraphLimit;
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 2;
-    const int partMinSize = 40;
-    const int partMaxSize = 40;
+    const int partMaxSize = 10;
+    const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
         Graph aGraph(someDeps.first, someDeps.second);

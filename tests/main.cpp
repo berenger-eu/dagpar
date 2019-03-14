@@ -74,6 +74,7 @@ int main(int argc, char** argv){
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
         Graph aGraph(someDeps.first, someDeps.second);
+        std::cout << "Number of nodes : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";

@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 #include <vector>
 #include <utility>
@@ -116,36 +117,62 @@ public:
             return std::pair<int, std::vector<std::pair<int,int>>>();
         }
 
-        std::pair<int, std::vector<std::pair<int,int>>> edges;
+        if(inFilename.length() >= 4 && inFilename.substr(inFilename.length() - 4) == ".dot"){
+            std::pair<int, std::vector<std::pair<int,int>>> edges;
+            int maxNodeId = -1;
 
-        int nbEdges;
-        edgeFile >> nbEdges;
+            std::string line;
+            while (std::getline(edgeFile, line)){
+                const auto arrowPos = line.find("->");
+                if(arrowPos != std::string::npos){
+                    std::istringstream iss(line);
+                    char arrowPart1, arrowPart2;
+                    int edgeSrc, edgeDst;
+                    if (!(iss >> edgeSrc >> arrowPart1 >> arrowPart2 >> edgeDst)) {
+                        std::cout << "[ERROR] Bad line " <<line << std::endl;
+                        return std::pair<int, std::vector<std::pair<int,int>>>();
+                    }
 
-        std::cout << "[INFO] There are " << nbEdges << " edges" << std::endl;
-        edges.second.reserve(nbEdges);
-
-        int maxNodeId = -1;
-
-        int edgeIdx, edgeSrc, edgeDst;
-        while (edgeFile >> edgeIdx >> edgeSrc >> edgeDst){
-            if(edgeIdx != int(edges.second.size())){
-                std::cout << "[ERROR] Bad idx, is " << edgeIdx << " should be " << edges.second.size() << std::endl;
-                std::cout << "[ERROR] Return empty graph" << std::endl;
-                return std::pair<int, std::vector<std::pair<int,int>>>();
-            }
-            if(nbEdges <= edgeIdx){
-                std::cout << "[ERROR] Bad idx, is " << edgeIdx << " which is largest than the expected number of edges" << std::endl;
-                std::cout << "[ERROR] Return empty graph" << std::endl;
-                return std::pair<int, std::vector<std::pair<int,int>>>();
+                    edges.second.emplace_back(edgeSrc, edgeDst);
+                    maxNodeId = std::max(maxNodeId, std::max(edgeSrc, edgeDst));
+                }
             }
 
-            edges.second.emplace_back(edgeSrc, edgeDst);
-            maxNodeId = std::max(maxNodeId, std::max(edgeSrc, edgeDst));
+            edges.first = maxNodeId+1;
+
+            return edges;
         }
+        else{
+            std::pair<int, std::vector<std::pair<int,int>>> edges;
+            int nbEdges;
+            edgeFile >> nbEdges;
 
-        edges.first = maxNodeId+1;
+            std::cout << "[INFO] There are " << nbEdges << " edges" << std::endl;
+            edges.second.reserve(nbEdges);
 
-        return edges;
+            int maxNodeId = -1;
+
+            int edgeIdx, edgeSrc, edgeDst;
+            while (edgeFile >> edgeIdx >> edgeSrc >> edgeDst){
+                if(edgeIdx != int(edges.second.size())){
+                    std::cout << "[ERROR] Bad idx, is " << edgeIdx << " should be " << edges.second.size() << std::endl;
+                    std::cout << "[ERROR] Return empty graph" << std::endl;
+                    return std::pair<int, std::vector<std::pair<int,int>>>();
+                }
+                if(nbEdges <= edgeIdx){
+                    std::cout << "[ERROR] Bad idx, is " << edgeIdx << " which is largest than the expected number of edges" << std::endl;
+                    std::cout << "[ERROR] Return empty graph" << std::endl;
+                    return std::pair<int, std::vector<std::pair<int,int>>>();
+                }
+
+                edges.second.emplace_back(edgeSrc, edgeDst);
+                maxNodeId = std::max(maxNodeId, std::max(edgeSrc, edgeDst));
+            }
+
+            edges.first = maxNodeId+1;
+
+            return edges;
+        }
     }
 };
 

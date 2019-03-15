@@ -189,7 +189,10 @@ class TestAll : public UTester< TestAll > {
                                           },
                                          [](Graph& graph, const int clusterSize){
                                              graph.partition(clusterSize, clusterSize);
-                                          }
+                                          },
+                                        [](Graph& graph, const int clusterSize){
+                                            graph.partitionHorizontal(clusterSize);
+                                         }
                                         };
 
         for(const int testSize : testSizes){

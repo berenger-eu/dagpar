@@ -177,6 +177,27 @@ int main(int argc, char** argv){
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
     }
+    {
+        Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
+        aGraph.partitionHorizontal(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-horizontal.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-horizontal.dot -o /tmp/agraph-horizontal.pdf\n";
+
+        Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
+        depGraph.saveToDot("/tmp/depgraph-horizontal.dot");
+        std::cout << "Generate pdf of the horizontal partition graph with: dot -Tpdf /tmp/depgraph-horizontal.dot -o /tmp/depgraph-horizontal.pdf\n";
+
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after horizontal partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+    }
 
     return 0;
 }

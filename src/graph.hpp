@@ -756,6 +756,194 @@ public:
         }
     }
 
+    void partitionHorizontal(const int maxSize){
+        std::vector<int> minDistFromTop(nodes.size(), -1);
+        std::vector<int> maxDistFromTop(nodes.size(), -1);
+        std::vector<int> minDistFromRoot(nodes.size(), -1);
+        std::vector<int> maxDistFromRoot(nodes.size(), -1);
+
+        std::vector<Node*> originalSources;
+        std::vector<Node*> originalRoot;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node.get());
+                minDistFromTop[node->getId()] = 0;
+                maxDistFromTop[node->getId()] = 0;
+            }
+            if(node->getSuccessors().size() == 0){
+                originalRoot.push_back(node.get());
+                minDistFromRoot[node->getId()] = 0;
+                maxDistFromRoot[node->getId()] = 0;
+            }
+        }
+        {
+            std::vector<Node*> sources = originalSources;
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    if(minDistFromTop[otherNode->getId()] == -1){
+                        minDistFromTop[otherNode->getId()] = minDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        minDistFromTop[otherNode->getId()] = std::min(minDistFromTop[selectedNode->getId()] + 1, minDistFromTop[otherNode->getId()]);
+                    }
+
+                    if(maxDistFromTop[otherNode->getId()] == -1){
+                        maxDistFromTop[otherNode->getId()] = maxDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromTop[otherNode->getId()] = std::max(maxDistFromTop[selectedNode->getId()] + 1, maxDistFromTop[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+        {
+            std::vector<Node*> root = originalRoot;
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(root.size()){
+                Node* selectedNode = root.back();
+                root.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getPredecessors()){
+                    if(minDistFromRoot[otherNode->getId()] == -1){
+                        minDistFromRoot[otherNode->getId()] = minDistFromRoot[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        minDistFromRoot[otherNode->getId()] = std::min(minDistFromRoot[selectedNode->getId()] + 1, minDistFromRoot[otherNode->getId()]);
+                    }
+
+                    if(maxDistFromRoot[otherNode->getId()] == -1){
+                        maxDistFromRoot[otherNode->getId()] = maxDistFromRoot[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromRoot[otherNode->getId()] = std::max(maxDistFromRoot[selectedNode->getId()] + 1, maxDistFromRoot[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getSuccessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getSuccessors().size())){
+                        root.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        {
+            std::vector<Node*> sources(originalSources);
+
+            std::vector<int> counterRelease(nodes.size(), 0);
+
+            int currentPartitionId = 0;
+
+            while(sources.size()){
+                std::deque<Node*> releasedNodes;
+                std::vector<std::set<int>> depsNodes(sources.size());
+                std::set<int> partitionNodes;
+                std::deque<Node*> sourcesSameWidth;
+                {
+                    int startingNodeIdx = -1;
+                    for(int potentialStartingNodeIdx = 0 ; potentialStartingNodeIdx < int(sources.size()) ; ++potentialStartingNodeIdx){
+                        Node* potentialStartingNode = sources[potentialStartingNodeIdx];
+                        assert(potentialStartingNode->getPartitionId() == -1);
+
+                        for(const auto& otherNode : potentialStartingNode->getSuccessors()){
+                            depsNodes[potentialStartingNodeIdx].insert(otherNode->getId());
+                        }
+
+                        if(startingNodeIdx == -1
+                                ||  minDistFromTop[potentialStartingNode->getId()] < minDistFromTop[sources[startingNodeIdx]->getId()]){
+                            startingNodeIdx = potentialStartingNodeIdx;
+                        }
+                    }
+
+                    for(const auto& otherNode : sources[startingNodeIdx]->getSuccessors()){
+                        counterRelease[otherNode->getId()] += 1;
+                        assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                        if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                            releasedNodes.push_back(otherNode);
+                        }
+                    }
+
+                    const int idxSelectedDeep = minDistFromTop[sources[startingNodeIdx]->getId()];
+                    partitionNodes = depsNodes[startingNodeIdx];
+
+                    sources[startingNodeIdx]->setPartitionId(currentPartitionId);
+
+                    depsNodes[startingNodeIdx] = std::move(depsNodes[depsNodes.size()-1]);
+                    depsNodes.pop_back();
+                    sources[startingNodeIdx] = std::move(sources[sources.size()-1]);
+                    sources.pop_back();
+
+                    int idxSources = 0;
+                    while(idxSources < int(sources.size())){
+                        if(minDistFromTop[sources[idxSources]->getId()] == idxSelectedDeep){
+                            sourcesSameWidth.push_back(sources[idxSources]);
+                            std::swap(sources[idxSources], sources[sources.size()-1]);
+                            sources.pop_back();
+                        }
+                        else{
+                            idxSources += 1;
+                        }
+                    }
+                }
+
+                int sizeCurrentPartition = 1;
+
+                while(sizeCurrentPartition < maxSize && sourcesSameWidth.size()){
+                    int bestIdx = -1;
+                    int bestIntersectionSize = 0;
+
+                    for(int potentialNeighborIdx = 0 ; potentialNeighborIdx < int(sourcesSameWidth.size()) ; ++potentialNeighborIdx){
+                        std::set<int> locksIntersection;
+                        std::set_intersection(partitionNodes.begin(),partitionNodes.end(),
+                                              depsNodes[potentialNeighborIdx].begin(),depsNodes[potentialNeighborIdx].end(),
+                                          std::inserter(locksIntersection,locksIntersection.begin()));
+
+                        if(bestIdx == -1 ||  bestIntersectionSize < int(locksIntersection.size())){
+                            bestIdx = potentialNeighborIdx;
+                            bestIntersectionSize = int(locksIntersection.size());
+                        }
+                    }
+
+                    for(const auto& otherNode : sourcesSameWidth[bestIdx]->getSuccessors()){
+                        counterRelease[otherNode->getId()] += 1;
+                        assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                        if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                            releasedNodes.push_back(otherNode);
+                        }
+                    }
+
+                    partitionNodes.insert(depsNodes[bestIdx].begin(), depsNodes[bestIdx].end());
+
+                    sourcesSameWidth[bestIdx]->setPartitionId(currentPartitionId);
+
+                    depsNodes[bestIdx] = std::move(depsNodes[depsNodes.size()-1]);
+                    depsNodes.pop_back();
+                    sourcesSameWidth[bestIdx] = std::move(sourcesSameWidth[sourcesSameWidth.size()-1]);
+                    sourcesSameWidth.pop_back();
+
+                    sizeCurrentPartition += 1;
+                }
+
+                sources.insert(sources.end(), sourcesSameWidth.begin(), sourcesSameWidth.end());
+                sources.insert(sources.end(), releasedNodes.begin(), releasedNodes.end());
+
+                currentPartitionId += 1;
+            }
+        }
+    }
 
     std::pair<int,double> estimateDegreeOfParallelism() const{
         int maxSourcesSize = 0;

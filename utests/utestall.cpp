@@ -192,6 +192,9 @@ class TestAll : public UTester< TestAll > {
                                           },
                                         [](Graph& graph, const int clusterSize){
                                             graph.partitionHorizontal(clusterSize);
+                                         },
+                                        [](Graph& graph, const int clusterSize){
+                                            graph.partitionDiamond(clusterSize);
                                          }
                                         };
 

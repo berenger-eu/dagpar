@@ -20,19 +20,45 @@
 #include "node.hpp"
 
 class Graph{
-    std::vector<std::unique_ptr<Node>> nodes;
+    std::vector<std::unique_ptr<Node>> nodesNotTopological;
+    std::vector<Node*> nodes;
 public:
     explicit Graph(const int inNodes, const std::vector<std::pair<int,int>>& inDependencyList){
-        nodes.resize(inNodes);
-        for(int idxNode = 0 ; idxNode < int(nodes.size()) ; ++idxNode){
-            nodes[idxNode].reset(new Node(idxNode));
+        nodesNotTopological.resize(inNodes);
+
+        for(int idxNode = 0 ; idxNode < int(nodesNotTopological.size()) ; ++idxNode){
+            nodesNotTopological[idxNode].reset(new Node(idxNode));
         }
 
         for(const auto& dep : inDependencyList){
             //Is not true when index are not in order: assert(dep.first < dep.second);
             assert(dep.second < inNodes);
-            nodes[dep.first]->addSuccessor(nodes[dep.second].get());
-            nodes[dep.second]->addPredecessor(nodes[dep.first].get());
+            nodesNotTopological[dep.first]->addSuccessor(nodesNotTopological[dep.second].get());
+            nodesNotTopological[dep.second]->addPredecessor(nodesNotTopological[dep.first].get());
+        }
+
+        std::vector<Node*> sources;
+        for(auto& node : nodesNotTopological){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+            }
+        }
+        std::vector<int> counterRelease(nodesNotTopological.size(), 0);
+        nodes.reserve(inNodes);
+        while(sources.size()){
+            Node* selectedNode = sources.back();
+            sources.pop_back();
+
+            nodes.push_back(selectedNode);
+
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    sources.push_back(otherNode);
+                }
+            }
         }
     }
 
@@ -41,17 +67,42 @@ public:
             const int depSrc = inDependencyList[idxDep*2+0];
             const int depDest = inDependencyList[idxDep*2+1];
 
-            if(int(nodes.size()) <= std::max(depSrc,depDest)){
+            if(int(nodesNotTopological.size()) <= std::max(depSrc,depDest)){
                 const int currentNbNodes = std::max(depSrc,depDest) + 1;
-                const int pastNbNodes = int(nodes.size());
-                nodes.resize(currentNbNodes);
+                const int pastNbNodes = int(nodesNotTopological.size());
+                nodesNotTopological.resize(currentNbNodes);
                 for(int idxNode = pastNbNodes ; idxNode < currentNbNodes ; ++idxNode){
-                    nodes[idxNode].reset(new Node(idxNode));
+                    nodesNotTopological[idxNode].reset(new Node(idxNode));
                 }
             }
 
-            nodes[depSrc]->addSuccessor(nodes[depDest].get());
-            nodes[depDest]->addPredecessor(nodes[depSrc].get());
+            nodesNotTopological[depSrc]->addSuccessor(nodesNotTopological[depDest].get());
+            nodesNotTopological[depDest]->addPredecessor(nodesNotTopological[depSrc].get());
+        }
+
+        std::vector<Node*> sources;
+        for(auto& node : nodesNotTopological){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+            }
+        }
+
+        std::vector<int> counterRelease(nodesNotTopological.size(), 0);
+        nodes.reserve(nodesNotTopological.size());
+        while(sources.size()){
+            Node* selectedNode = sources.back();
+            sources.pop_back();
+
+            nodes.push_back(selectedNode);
+
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    sources.push_back(otherNode);
+                }
+            }
         }
     }
 
@@ -63,9 +114,9 @@ public:
         assert(nodes.size() == inPartitionPerNode.size());
         assert(nodes.size() == inCostPerNode.size());
 
-        for(int idxNode = 0 ; idxNode < int(nodes.size()) ; ++idxNode){
-            nodes[idxNode]->setPartitionId(inPartitionPerNode[idxNode]);
-            nodes[idxNode]->setCost(inCostPerNode[idxNode]);
+        for(int idxNode = 0 ; idxNode < int(nodesNotTopological.size()) ; ++idxNode){
+            nodesNotTopological[idxNode]->setPartitionId(inPartitionPerNode[idxNode]);
+            nodesNotTopological[idxNode]->setCost(inCostPerNode[idxNode]);
         }
     }
 
@@ -75,7 +126,12 @@ public:
 
     const Node* getNode(const int inIdxNode) const{
         assert(inIdxNode < int(nodes.size()));
-        return nodes[inIdxNode].get();
+        return nodes[inIdxNode];
+    }
+
+    const Node* getNodeFromId(const int inIdNode) const{
+        assert(inIdNode < int(nodesNotTopological.size()));
+        return nodesNotTopological[inIdNode].get();
     }
 
     void saveToDot(const std::string& inFilename){
@@ -96,7 +152,7 @@ public:
             }
 
             const auto& color = partitionColors[node->getPartitionId()];
-            dotFile << node->getId() << " [label=\"" << node->getId() << " [" << node->getCost() << "]\", style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
+            dotFile << node->getId() << " [label=\"" << node->getId() << " [" << node->getCost() << "/" << node->getPartitionId() << "]\", style=filled,color=\"" << color[0] << " " << color[1] << " " << color[2] << "\"]\n";
         }
 
 
@@ -108,7 +164,7 @@ public:
         std::vector<Node*> sources;
         for(auto& node : nodes){
             if(node->getPredecessors().size() == 0){
-                sources.push_back(node.get());
+                sources.push_back(node);
             }
         }
 
@@ -160,12 +216,12 @@ public:
         for(auto& node : nodes){
             node->setPartitionId(-1);
             if(node->getPredecessors().size() == 0){
-                originalSources.push_back(node.get());
+                originalSources.push_back(node);
                 minDistFromTop[node->getId()] = 0;
                 maxDistFromTop[node->getId()] = 0;
             }
             if(node->getSuccessors().size() == 0){
-                originalRoot.push_back(node.get());
+                originalRoot.push_back(node);
                 maxDistFromRoot[node->getId()] = 0;
             }
         }
@@ -322,12 +378,12 @@ public:
         for(auto& node : nodes){
             node->setPartitionId(-1);
             if(node->getPredecessors().size() == 0){
-                originalSources.push_back(node.get());
+                originalSources.push_back(node);
                 minDistFromTop[node->getId()] = 0;
                 maxDistFromTop[node->getId()] = 0;
             }
             if(node->getSuccessors().size() == 0){
-                originalRoot.push_back(node.get());
+                originalRoot.push_back(node);
                 maxDistFromRoot[node->getId()] = 0;
             }
         }
@@ -537,7 +593,7 @@ public:
         for(auto& node : nodes){
             node->setPartitionId(-1);
             if(node->getPredecessors().size() == 0){
-                originalSources.push_back(node.get());
+                originalSources.push_back(node);
             }
         }
         {
@@ -767,12 +823,12 @@ public:
         for(auto& node : nodes){
             node->setPartitionId(-1);
             if(node->getPredecessors().size() == 0){
-                originalSources.push_back(node.get());
+                originalSources.push_back(node);
                 minDistFromTop[node->getId()] = 0;
                 maxDistFromTop[node->getId()] = 0;
             }
             if(node->getSuccessors().size() == 0){
-                originalRoot.push_back(node.get());
+                originalRoot.push_back(node);
                 minDistFromRoot[node->getId()] = 0;
                 maxDistFromRoot[node->getId()] = 0;
             }
@@ -945,6 +1001,187 @@ public:
         }
     }
 
+
+    void partitionDiamond(const int maxSize){
+        // This algorithm will work only if:
+        // - there is one root
+        // - each node has at most 3 pred/succ dependencies
+        std::vector<Node*> originalSources;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node);
+            }
+            const bool depsAreValid = (int(node->getPredecessors().size() + node->getSuccessors().size()) <= 4)
+                    && int(node->getPredecessors().size()) >= 0 && int(node->getSuccessors().size()) >= 0
+                    && int(node->getPredecessors().size()) < 4 && int(node->getSuccessors().size()) < 4;
+            if(!depsAreValid){
+                std::cerr << "[GRAPH][ERROR] the number of dependencies are invlid for node " << node->getId() << "\n";
+                std::cerr << "[GRAPH][ERROR] nb predecessors " << node->getPredecessors().size() << "\n";
+                std::cerr << "[GRAPH][ERROR] nb successors " << node->getSuccessors().size() << "\n";
+                std::cerr << "[GRAPH][ERROR] the code will continue...." << std::endl;
+            }
+        }
+
+        std::vector<int> maxDistFromTop(nodes.size(), -1);
+        {
+            std::vector<Node*> sources = originalSources;
+
+            for(auto& node : sources){
+                maxDistFromTop[node->getId()] = 0;
+            }
+
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    if(maxDistFromTop[otherNode->getId()] == -1){
+                        maxDistFromTop[otherNode->getId()] = maxDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromTop[otherNode->getId()] = std::max(maxDistFromTop[selectedNode->getId()] + 1, maxDistFromTop[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        std::vector<std::pair<int,Node*>> maxDistFromTopWithNode(nodes.size());
+        for(auto& node : nodes){
+            maxDistFromTopWithNode[node->getId()].first = maxDistFromTop[node->getId()];
+            maxDistFromTopWithNode[node->getId()].second = node;
+        }
+
+        std::sort(maxDistFromTopWithNode.begin(), maxDistFromTopWithNode.end(),
+                  [](const std::pair<int,Node*>& p1, const std::pair<int,Node*>& p2){
+            return p1.first < p2.first;
+        });
+
+        int nbLevelsInHalfDiamond = 1;
+        while(((nbLevelsInHalfDiamond+2)*(nbLevelsInHalfDiamond+1))/2 < maxSize/2){
+            nbLevelsInHalfDiamond += 1;
+        }
+
+        int currentPartitionId = 0;
+
+        for(int idxNode = 0 ; idxNode < int(maxDistFromTopWithNode.size()) ; ++idxNode){
+            Node* selectedNode = maxDistFromTopWithNode[idxNode].second;
+
+            if(selectedNode->getPartitionId() == -1){
+                selectedNode->setPartitionId(currentPartitionId);
+
+                const int selectedNodeDistanceFromTop = maxDistFromTop[selectedNode->getId()];
+
+                std::vector<Node*> nodesAtPreviousLevel;
+                nodesAtPreviousLevel.push_back(selectedNode);
+
+                for(int idxIncreaseLevel = 1 ; idxIncreaseLevel <= nbLevelsInHalfDiamond ; ++idxIncreaseLevel){
+                    std::vector<Node*> nodesAtCurrentLevel;
+
+                    for(auto& parent : nodesAtPreviousLevel){
+                        for(const auto& currentNode : parent->getSuccessors()){
+                            if(currentNode->getPartitionId() == -1
+                                    && maxDistFromTop[currentNode->getId()] == selectedNodeDistanceFromTop + idxIncreaseLevel){
+                                currentNode->setPartitionId(currentPartitionId);
+                                nodesAtCurrentLevel.push_back(currentNode);
+                            }
+                        }
+                    }
+
+                    nodesAtPreviousLevel = std::move(nodesAtCurrentLevel);
+                }
+
+                if(nodesAtPreviousLevel.size()){
+                    std::vector<std::vector<std::set<Node*>>> allSubNodesPerLevel(nodesAtPreviousLevel.size());
+                    for(int idxNodeLevel  = 0 ; idxNodeLevel < int(nodesAtPreviousLevel.size()) ; ++idxNodeLevel){
+                        allSubNodesPerLevel[idxNodeLevel].resize(2 * nbLevelsInHalfDiamond + 1);
+
+                        std::vector<Node*> subNodes;
+                        subNodes.push_back(nodesAtPreviousLevel[idxNodeLevel]);
+
+                        while(subNodes.size()){
+                            Node* currentNode = subNodes.back();
+                            subNodes.pop_back();
+
+                            for(const auto& child : currentNode->getSuccessors()){
+                                if(maxDistFromTop[child->getId()] < selectedNodeDistanceFromTop + 2 * nbLevelsInHalfDiamond + 1){
+                                    const int levelPosition = maxDistFromTop[child->getId()] - selectedNodeDistanceFromTop - (nbLevelsInHalfDiamond + 1);
+                                    assert(0 <= levelPosition && levelPosition < 2 * nbLevelsInHalfDiamond + 1);
+                                    allSubNodesPerLevel[idxNodeLevel][levelPosition].insert(child);
+                                    subNodes.push_back(child);
+                                }
+                            }
+                        }
+                    }
+
+                    std::vector<Node*> completeIntersection;
+
+                    for(int idxDecreaseLevel = 0 ; idxDecreaseLevel < nbLevelsInHalfDiamond ; ++idxDecreaseLevel){
+                        std::set<Node*> currentLevelIntersection;
+
+                        currentLevelIntersection = allSubNodesPerLevel[0][idxDecreaseLevel];
+
+                        for(int idxNodeLevel  = 1 ; idxNodeLevel < int(nodesAtPreviousLevel.size()) ; ++idxNodeLevel){
+                            std::set<Node*> intersect;
+                            std::set_intersection(currentLevelIntersection.begin(),currentLevelIntersection.end(),
+                                             allSubNodesPerLevel[idxNodeLevel][idxDecreaseLevel].begin(),allSubNodesPerLevel[idxNodeLevel][idxDecreaseLevel].end(),
+                                              std::inserter(intersect,intersect.begin()));
+                            currentLevelIntersection = std::move(intersect);
+                        }
+
+                        std::copy(currentLevelIntersection.begin(), currentLevelIntersection.end(), std::back_inserter(completeIntersection));
+                        if(currentLevelIntersection.size() <= 1){
+                            break;
+                        }
+                    }
+
+                    for(auto& currentNode : completeIntersection){
+                        if(currentNode->getPartitionId() == -1){
+                            currentNode->setPartitionId(currentPartitionId);
+                        }
+                    }
+                }
+
+                currentPartitionId += 1;
+            }
+        }
+
+        {
+            std::set<std::pair<int,int>> depsBetweenPartitions;
+            for(auto& node : nodes){
+                for(const auto& otherNode : node->getSuccessors()){
+                    if(node->getPartitionId() != otherNode->getPartitionId()){
+                        depsBetweenPartitions.insert(std::pair<int,int>(node->getPartitionId(), otherNode->getPartitionId()));
+                    }
+                }
+            }
+
+            std::vector<std::pair<int,int>> depsBetweenPartitionsVector;
+            depsBetweenPartitionsVector.reserve(depsBetweenPartitions.size());
+            std::copy(depsBetweenPartitions.begin(), depsBetweenPartitions.end(), depsBetweenPartitionsVector.begin());
+
+            Graph partionGraph(currentPartitionId, depsBetweenPartitionsVector);
+
+            std::unordered_map<int,int> partitionTolopologicalMapping;
+
+            for (int idxPartion = 0 ; idxPartion < partionGraph.getNbNodes() ; ++idxPartion) {
+                partitionTolopologicalMapping[partionGraph.getNode(idxPartion)->getId()] = idxPartion;
+            }
+
+            for(auto& node : nodes){
+                node->setPartitionId(partitionTolopologicalMapping[node->getPartitionId()]);
+            }
+        }
+    }
+
     std::pair<int,double> estimateDegreeOfParallelism() const{
         int maxSourcesSize = 0;
         int sumSourcesSize = 0;
@@ -952,7 +1189,7 @@ public:
         std::deque<Node*> sources;
         for(auto& node : nodes){
             if(node->getPredecessors().size() == 0){
-                sources.push_back(node.get());
+                sources.push_back(node);
             }
         }
 
@@ -981,8 +1218,8 @@ public:
         std::set<Node*> alreadyVisistedNodes;
         for(auto& node : nodes){
             if(node->getPredecessors().size() == 0){
-                sources.push_back(node.get());
-                alreadyVisistedNodes.insert(node.get());
+                sources.push_back(node);
+                alreadyVisistedNodes.insert(node);
             }
         }
 
@@ -1019,7 +1256,6 @@ public:
 
         for(const auto& node : nodes){
             for(const auto& otherNode : node->getSuccessors()){
-                assert(node->getPartitionId() <= otherNode->getPartitionId());
                 if(node->getPartitionId() != otherNode->getPartitionId()){
                     dependencyBetweenPartitions.emplace_back(std::pair<int,int>{node->getPartitionId(), otherNode->getPartitionId()});
                 }

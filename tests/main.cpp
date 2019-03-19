@@ -198,6 +198,27 @@ int main(int argc, char** argv){
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
     }
+    {
+        Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
+        aGraph.partitionDiamond(/*partMaxSize*/4);
+        aGraph.saveToDot("/tmp/agraph-diamond.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-diamond.dot -o /tmp/agraph-diamond.pdf\n";
+
+        Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
+        depGraph.saveToDot("/tmp/depgraph-diamond.dot");
+        std::cout << "Generate pdf of the diamond partition graph with: dot -Tpdf /tmp/depgraph-diamond.dot -o /tmp/depgraph-diamond.pdf\n";
+
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after diamond partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+    }
 
     return 0;
 }

@@ -107,7 +107,7 @@ public:
         events.resize(inGraph.getNbNodes());
 
         for(int idxNode = 0 ; idxNode < inGraph.getNbNodes() ; ++idxNode){
-            const auto& node = inGraph.getNode(idxNode);
+            const auto& node = inGraph.getNodeFromId(idxNode);
             assert(idxNode == node->getId());
 
             events[node->getId()].init(node->getId(), node->getCost());
@@ -133,7 +133,7 @@ public:
             const int workerId = idleWorkerCount.back();
             idleWorkerCount.pop_back();
 
-            Worker wk{currentTime + inGraph.getNode(readyTaskId)->getCost(),
+            Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost(),
                      readyTaskId,
                      workerId};
             workers.push(wk);
@@ -156,7 +156,7 @@ public:
                 currentTime = worker.scheduledAvailable;
 
                 // release dependencies
-                for(const auto& successorNode : inGraph.getNode(currentTaskId)->getSuccessors()){
+                for(const auto& successorNode : inGraph.getNodeFromId(currentTaskId)->getSuccessors()){
                     countPredecessorsOver[successorNode->getId()] += 1;
                     if(countPredecessorsOver[successorNode->getId()] == int(successorNode->getPredecessors().size())){
                         readyTasks.push_back(successorNode->getId());
@@ -175,7 +175,7 @@ public:
                 const int workerId = idleWorkerCount.back();
                 idleWorkerCount.pop_back();
 
-                Worker wk{currentTime + inGraph.getNode(readyTaskId)->getCost(),
+                Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost(),
                          readyTaskId,
                          workerId};
                 workers.push(wk);
@@ -197,7 +197,7 @@ public:
             assert(currentTime <= worker.scheduledAvailable);
             currentTime = worker.scheduledAvailable;
 
-            assert(inGraph.getNode(worker.currentTaskId)->getSuccessors().size() == 0);
+            assert(inGraph.getNodeFromId(worker.currentTaskId)->getSuccessors().size() == 0);
         }
 
 

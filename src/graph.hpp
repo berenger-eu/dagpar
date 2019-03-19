@@ -22,6 +22,44 @@
 class Graph{
     std::vector<std::unique_ptr<Node>> nodesNotTopological;
     std::vector<Node*> nodes;
+
+    static bool CoreIsDag(const std::vector<std::unique_ptr<Node>>& inNodes){
+        std::deque<Node*> sources;
+        std::set<Node*> alreadyVisistedNodes;
+        for(auto& node : inNodes){
+            if(node->getPredecessors().size() == 0){
+                sources.push_back(node.get());
+                alreadyVisistedNodes.insert(node.get());
+            }
+        }
+
+        std::vector<int> counterRelease(inNodes.size(), 0);
+
+        while(sources.size()){
+            Node* selectedNode = sources.front();
+            sources.pop_front();
+
+
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+
+                if(counterRelease[otherNode->getId()] > int(otherNode->getPredecessors().size())){
+                    return false;
+                }
+
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    if(alreadyVisistedNodes.find(otherNode) != alreadyVisistedNodes.end()){
+                        return false;
+                    }
+                    sources.push_back(otherNode);
+                    alreadyVisistedNodes.insert(otherNode);
+                }
+            }
+        }
+
+        return alreadyVisistedNodes.size() == inNodes.size();
+    }
+
 public:
     explicit Graph(const int inNodes, const std::vector<std::pair<int,int>>& inDependencyList){
         nodesNotTopological.resize(inNodes);
@@ -37,27 +75,35 @@ public:
             nodesNotTopological[dep.second]->addPredecessor(nodesNotTopological[dep.first].get());
         }
 
-        std::vector<Node*> sources;
-        for(auto& node : nodesNotTopological){
-            node->setPartitionId(-1);
-            if(node->getPredecessors().size() == 0){
-                sources.push_back(node.get());
+        if(CoreIsDag(nodesNotTopological)){
+            std::vector<Node*> sources;
+            for(auto& node : nodesNotTopological){
+                node->setPartitionId(-1);
+                if(node->getPredecessors().size() == 0){
+                    sources.push_back(node.get());
+                }
+            }
+            std::vector<int> counterRelease(nodesNotTopological.size(), 0);
+            nodes.reserve(inNodes);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                nodes.push_back(selectedNode);
+
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
             }
         }
-        std::vector<int> counterRelease(nodesNotTopological.size(), 0);
-        nodes.reserve(inNodes);
-        while(sources.size()){
-            Node* selectedNode = sources.back();
-            sources.pop_back();
-
-            nodes.push_back(selectedNode);
-
-            for(const auto& otherNode : selectedNode->getSuccessors()){
-                counterRelease[otherNode->getId()] += 1;
-                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
-                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
-                    sources.push_back(otherNode);
-                }
+        else{
+            nodes.reserve(nodesNotTopological.size());
+            for(auto& node : nodesNotTopological){
+                nodes.push_back(node.get());
             }
         }
     }
@@ -80,28 +126,36 @@ public:
             nodesNotTopological[depDest]->addPredecessor(nodesNotTopological[depSrc].get());
         }
 
-        std::vector<Node*> sources;
-        for(auto& node : nodesNotTopological){
-            node->setPartitionId(-1);
-            if(node->getPredecessors().size() == 0){
-                sources.push_back(node.get());
+        if(CoreIsDag(nodesNotTopological)){
+            std::vector<Node*> sources;
+            for(auto& node : nodesNotTopological){
+                node->setPartitionId(-1);
+                if(node->getPredecessors().size() == 0){
+                    sources.push_back(node.get());
+                }
+            }
+
+            std::vector<int> counterRelease(nodesNotTopological.size(), 0);
+            nodes.reserve(nodesNotTopological.size());
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                nodes.push_back(selectedNode);
+
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
             }
         }
-
-        std::vector<int> counterRelease(nodesNotTopological.size(), 0);
-        nodes.reserve(nodesNotTopological.size());
-        while(sources.size()){
-            Node* selectedNode = sources.back();
-            sources.pop_back();
-
-            nodes.push_back(selectedNode);
-
-            for(const auto& otherNode : selectedNode->getSuccessors()){
-                counterRelease[otherNode->getId()] += 1;
-                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
-                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
-                    sources.push_back(otherNode);
-                }
+        else{
+            nodes.reserve(nodesNotTopological.size());
+            for(auto& node : nodesNotTopological){
+                nodes.push_back(node.get());
             }
         }
     }
@@ -1214,40 +1268,7 @@ public:
     }
 
     bool isDag() const {
-        std::deque<Node*> sources;
-        std::set<Node*> alreadyVisistedNodes;
-        for(auto& node : nodes){
-            if(node->getPredecessors().size() == 0){
-                sources.push_back(node);
-                alreadyVisistedNodes.insert(node);
-            }
-        }
-
-        std::vector<int> counterRelease(nodes.size(), 0);
-
-        while(sources.size()){
-            Node* selectedNode = sources.front();
-            sources.pop_front();
-
-
-            for(const auto& otherNode : selectedNode->getSuccessors()){
-                counterRelease[otherNode->getId()] += 1;
-
-                if(counterRelease[otherNode->getId()] > int(otherNode->getPredecessors().size())){
-                    return false;
-                }
-
-                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
-                    if(alreadyVisistedNodes.find(otherNode) != alreadyVisistedNodes.end()){
-                        return false;
-                    }
-                    sources.push_back(otherNode);
-                    alreadyVisistedNodes.insert(otherNode);
-                }
-            }
-        }
-
-        return alreadyVisistedNodes.size() == nodes.size();
+        return CoreIsDag(nodesNotTopological);
     }
 
     Graph getPartitionGraph() const{

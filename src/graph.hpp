@@ -1234,32 +1234,6 @@ public:
                 }
             }
         }
-
-        {// TODO test
-            std::vector<std::set<int>> nexts(proceedPartitionsInfo.size());
-            std::vector<std::set<int>> prevs(proceedPartitionsInfo.size());
-            for(auto& node : nodes){
-                assert(node->getPartitionId() < int(proceedPartitionsInfo.size()));
-                for(const auto& otherNode : node->getSuccessors()){
-                    if(node->getPartitionId() != otherNode->getPartitionId()){
-                        nexts[node->getPartitionId()].insert(otherNode->getPartitionId());
-                        if(prevs[node->getPartitionId()].find(otherNode->getPartitionId()) != prevs[node->getPartitionId()].end()){
-                            std::cout << "Error node " << node->getId() << " of partition " << node->getPartitionId() << "\n";
-                            std::cout << "Has node " << otherNode->getId() << " of partition " << otherNode->getPartitionId() << " has next and prev\n";
-                        }
-                    }
-                }
-                for(const auto& otherNode : node->getPredecessors()){
-                    if(node->getPartitionId() != otherNode->getPartitionId()){
-                        prevs[node->getPartitionId()].insert(otherNode->getPartitionId());
-                        if(nexts[node->getPartitionId()].find(otherNode->getPartitionId()) != nexts[node->getPartitionId()].end()){
-                            std::cout << "Error node " << node->getId() << " of partition " << node->getPartitionId() << "\n";
-                            std::cout << "Has node " << otherNode->getId() << " of partition " << otherNode->getPartitionId() << " has next and prev\n";
-                        }
-                    }
-                }
-            }
-        }
     }
 
     std::pair<int,double> estimateDegreeOfParallelism() const{

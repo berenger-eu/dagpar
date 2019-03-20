@@ -87,7 +87,7 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 2;
-    const int partMaxSize = 10;
+    const int partMaxSize = 4;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
     {
@@ -201,7 +201,7 @@ int main(int argc, char** argv){
     {
         Graph aGraph(someDeps.first, someDeps.second);
         assert(aGraph.isDag());
-        aGraph.partitionDiamond(/*partMaxSize*/4);
+        aGraph.partitionDiamond(partMaxSize);
         aGraph.saveToDot("/tmp/agraph-diamond.dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-diamond.dot -o /tmp/agraph-diamond.pdf\n";
 

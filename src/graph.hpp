@@ -1056,7 +1056,7 @@ public:
     }
 
 
-    void partitionDiamond(const int maxSize){
+    void partitionDiamond(const int maxSize, const bool warnIfInvalid = false){
         // This algorithm will work only if:
         // - there is one root
         // - each node has at most 3 pred/succ dependencies
@@ -1066,14 +1066,16 @@ public:
             if(node->getPredecessors().size() == 0){
                 originalSources.push_back(node);
             }
-            const bool depsAreValid = (int(node->getPredecessors().size() + node->getSuccessors().size()) <= 4)
-                    && int(node->getPredecessors().size()) >= 0 && int(node->getSuccessors().size()) >= 0
-                    && int(node->getPredecessors().size()) < 4 && int(node->getSuccessors().size()) < 4;
-            if(!depsAreValid){
-                std::cerr << "[GRAPH][ERROR] the number of dependencies are invlid for node " << node->getId() << "\n";
-                std::cerr << "[GRAPH][ERROR] nb predecessors " << node->getPredecessors().size() << "\n";
-                std::cerr << "[GRAPH][ERROR] nb successors " << node->getSuccessors().size() << "\n";
-                std::cerr << "[GRAPH][ERROR] the code will continue...." << std::endl;
+            if(warnIfInvalid){
+                const bool depsAreValid = (int(node->getPredecessors().size() + node->getSuccessors().size()) <= 4)
+                        && int(node->getPredecessors().size()) >= 0 && int(node->getSuccessors().size()) >= 0
+                        && int(node->getPredecessors().size()) < 4 && int(node->getSuccessors().size()) < 4;
+                if(!depsAreValid){
+                    std::cerr << "[GRAPH][ERROR] The number of dependencies are invalid for node " << node->getId() << "\n";
+                    std::cerr << "[GRAPH][ERROR] - nb predecessors " << node->getPredecessors().size() << "\n";
+                    std::cerr << "[GRAPH][ERROR] - nb successors " << node->getSuccessors().size() << "\n";
+                    std::cerr << "[GRAPH][ERROR] - the code will continue anyway..." << std::endl;
+                }
             }
         }
 
@@ -1119,119 +1121,143 @@ public:
             return p1.first < p2.first;
         });
 
-        int nbLevelsInHalfDiamond = 1;
+        int nbLevelsInHalfDiamond = 0;
         while(((nbLevelsInHalfDiamond+2)*(nbLevelsInHalfDiamond+1))/2 < maxSize/2){
             nbLevelsInHalfDiamond += 1;
         }
 
-        int currentPartitionId = 0;
+        struct InfoPartition{
+            int nbNnodesInPartition;
+            int startingLevel;
+            std::set<int> idsAllParentPartitions;
+        };
+
+        std::vector<InfoPartition> proceedPartitionsInfo;
+        proceedPartitionsInfo.reserve(nodes.size()/maxSize);
 
         for(int idxNode = 0 ; idxNode < int(maxDistFromTopWithNode.size()) ; ++idxNode){
             Node* selectedNode = maxDistFromTopWithNode[idxNode].second;
+            const int selectedNodeDistFromTop = maxDistFromTop[selectedNode->getId()];
 
-            if(selectedNode->getPartitionId() == -1){
+            std::set<int> selectedNodeParentPartitionIds;
+            for(const auto& selectedNodeParent : selectedNode->getPredecessors()){
+                assert(selectedNodeParent->getPartitionId() != -1);
+                selectedNodeParentPartitionIds.insert(selectedNodeParent->getPartitionId());
+            }
+
+            if(selectedNodeParentPartitionIds.size() == 0){
+                const int currentPartitionId = int(proceedPartitionsInfo.size());
                 selectedNode->setPartitionId(currentPartitionId);
 
-                const int selectedNodeDistanceFromTop = maxDistFromTop[selectedNode->getId()];
+                proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
+                proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                proceedPartitionsInfo.back().nbNnodesInPartition = 1;
+            }
+            else if(selectedNodeParentPartitionIds.size() == 1){
+                const int uniqueParentPartitionId = (*selectedNodeParentPartitionIds.begin());
+                assert(uniqueParentPartitionId < int(proceedPartitionsInfo.size()));
+                const auto& uniqueParentPartitionInfo = proceedPartitionsInfo[uniqueParentPartitionId];
 
-                std::vector<Node*> nodesAtPreviousLevel;
-                nodesAtPreviousLevel.push_back(selectedNode);
+                if(selectedNodeDistFromTop < uniqueParentPartitionInfo.startingLevel + 2 * nbLevelsInHalfDiamond + 1){
+                    selectedNode->setPartitionId(uniqueParentPartitionId);
+                }
+                else{
+                    const int currentPartitionId = int(proceedPartitionsInfo.size());
+                    selectedNode->setPartitionId(currentPartitionId);
 
-                for(int idxIncreaseLevel = 1 ; idxIncreaseLevel <= nbLevelsInHalfDiamond ; ++idxIncreaseLevel){
-                    std::vector<Node*> nodesAtCurrentLevel;
-
-                    for(auto& parent : nodesAtPreviousLevel){
-                        for(const auto& currentNode : parent->getSuccessors()){
-                            if(currentNode->getPartitionId() == -1
-                                    && maxDistFromTop[currentNode->getId()] == selectedNodeDistanceFromTop + idxIncreaseLevel){
-                                currentNode->setPartitionId(currentPartitionId);
-                                nodesAtCurrentLevel.push_back(currentNode);
-                            }
-                        }
+                    proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
+                    proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                    proceedPartitionsInfo.back().nbNnodesInPartition = 1;
+                    proceedPartitionsInfo.back().idsAllParentPartitions = proceedPartitionsInfo[uniqueParentPartitionId].idsAllParentPartitions;
+                    proceedPartitionsInfo.back().idsAllParentPartitions.insert(uniqueParentPartitionId);
+                }
+            }
+            else{
+                std::vector<std::tuple<int,int,int>> possibleCurrentPartitionsWithDistAndNb;
+                for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
+                    const auto& parentPartitionInfo = proceedPartitionsInfo[parentPartitionId];
+                    if(selectedNodeDistFromTop < parentPartitionInfo.startingLevel + nbLevelsInHalfDiamond + 1){
+                        possibleCurrentPartitionsWithDistAndNb.emplace_back(parentPartitionId,
+                                                                            parentPartitionInfo.startingLevel,
+                                                                            parentPartitionInfo.nbNnodesInPartition);
                     }
-
-                    nodesAtPreviousLevel = std::move(nodesAtCurrentLevel);
                 }
 
-                if(nodesAtPreviousLevel.size()){
-                    std::vector<std::vector<std::set<Node*>>> allSubNodesPerLevel(nodesAtPreviousLevel.size());
-                    for(int idxNodeLevel  = 0 ; idxNodeLevel < int(nodesAtPreviousLevel.size()) ; ++idxNodeLevel){
-                        allSubNodesPerLevel[idxNodeLevel].resize(2 * nbLevelsInHalfDiamond + 1);
+                std::sort(possibleCurrentPartitionsWithDistAndNb.begin(), possibleCurrentPartitionsWithDistAndNb.end(),
+                          [](const std::tuple<int,int,int>& p1, const std::tuple<int,int,int>& p2){
+                    return std::get<1>(p1) > std::get<1>(p2)
+                            || (std::get<1>(p1) == std::get<1>(p2)
+                                && std::get<2>(p1) < std::get<2>(p2));
+                });
 
-                        std::vector<Node*> subNodes;
-                        subNodes.push_back(nodesAtPreviousLevel[idxNodeLevel]);
+                bool nodeHasBeenInserted = false;
 
-                        while(subNodes.size()){
-                            Node* currentNode = subNodes.back();
-                            subNodes.pop_back();
+                for(const auto& testPartitionIdWithDist : possibleCurrentPartitionsWithDistAndNb){
+                    const int testPartitionId = std::get<0>(testPartitionIdWithDist);
+                    bool testPartitionIdIsLinkedToAParent = false;
 
-                            for(const auto& child : currentNode->getSuccessors()){
-                                if(maxDistFromTop[child->getId()] < selectedNodeDistanceFromTop + 2 * nbLevelsInHalfDiamond + 1){
-                                    const int levelPosition = maxDistFromTop[child->getId()] - selectedNodeDistanceFromTop - (nbLevelsInHalfDiamond + 1);
-                                    assert(0 <= levelPosition && levelPosition < 2 * nbLevelsInHalfDiamond + 1);
-                                    allSubNodesPerLevel[idxNodeLevel][levelPosition].insert(child);
-                                    subNodes.push_back(child);
-                                }
-                            }
-                        }
-                    }
-
-                    std::vector<Node*> completeIntersection;
-
-                    for(int idxDecreaseLevel = 0 ; idxDecreaseLevel < nbLevelsInHalfDiamond ; ++idxDecreaseLevel){
-                        std::set<Node*> currentLevelIntersection;
-
-                        currentLevelIntersection = allSubNodesPerLevel[0][idxDecreaseLevel];
-
-                        for(int idxNodeLevel  = 1 ; idxNodeLevel < int(nodesAtPreviousLevel.size()) ; ++idxNodeLevel){
-                            std::set<Node*> intersect;
-                            std::set_intersection(currentLevelIntersection.begin(),currentLevelIntersection.end(),
-                                             allSubNodesPerLevel[idxNodeLevel][idxDecreaseLevel].begin(),allSubNodesPerLevel[idxNodeLevel][idxDecreaseLevel].end(),
-                                              std::inserter(intersect,intersect.begin()));
-                            currentLevelIntersection = std::move(intersect);
-                        }
-
-                        std::copy(currentLevelIntersection.begin(), currentLevelIntersection.end(), std::back_inserter(completeIntersection));
-                        if(currentLevelIntersection.size() <= 1){
+                    for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
+                        if(testPartitionId != parentPartitionId
+                                    && proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.find(testPartitionId)
+                                            != proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.end()){
+                            testPartitionIdIsLinkedToAParent = true;
                             break;
                         }
                     }
 
-                    for(auto& currentNode : completeIntersection){
-                        if(currentNode->getPartitionId() == -1){
-                            currentNode->setPartitionId(currentPartitionId);
-                        }
+                    if(testPartitionIdIsLinkedToAParent == false){
+                        selectedNode->setPartitionId(testPartitionId);
+                        proceedPartitionsInfo[testPartitionId].nbNnodesInPartition += 1;
+
+                        selectedNodeParentPartitionIds.erase(testPartitionId);
+                        proceedPartitionsInfo[testPartitionId].idsAllParentPartitions.insert(selectedNodeParentPartitionIds.begin(),
+                                                                                             selectedNodeParentPartitionIds.end());
+
+                        nodeHasBeenInserted = true;
+                        break;
                     }
                 }
 
-                currentPartitionId += 1;
+                if(nodeHasBeenInserted == false){
+                    const int currentPartitionId = int(proceedPartitionsInfo.size());
+                    selectedNode->setPartitionId(currentPartitionId);
+
+                    proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
+                    proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                    proceedPartitionsInfo.back().nbNnodesInPartition = 1;
+
+                    for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
+                        proceedPartitionsInfo.back().idsAllParentPartitions.insert(proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.begin(),
+                                                                                   proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.end());
+                        proceedPartitionsInfo.back().idsAllParentPartitions.insert(parentPartitionId);
+                    }
+                }
             }
         }
 
-        {
-            std::set<std::pair<int,int>> depsBetweenPartitions;
+        {// TODO test
+            std::vector<std::set<int>> nexts(proceedPartitionsInfo.size());
+            std::vector<std::set<int>> prevs(proceedPartitionsInfo.size());
             for(auto& node : nodes){
+                assert(node->getPartitionId() < int(proceedPartitionsInfo.size()));
                 for(const auto& otherNode : node->getSuccessors()){
                     if(node->getPartitionId() != otherNode->getPartitionId()){
-                        depsBetweenPartitions.insert(std::pair<int,int>(node->getPartitionId(), otherNode->getPartitionId()));
+                        nexts[node->getPartitionId()].insert(otherNode->getPartitionId());
+                        if(prevs[node->getPartitionId()].find(otherNode->getPartitionId()) != prevs[node->getPartitionId()].end()){
+                            std::cout << "Error node " << node->getId() << " of partition " << node->getPartitionId() << "\n";
+                            std::cout << "Has node " << otherNode->getId() << " of partition " << otherNode->getPartitionId() << " has next and prev\n";
+                        }
                     }
                 }
-            }
-
-            std::vector<std::pair<int,int>> depsBetweenPartitionsVector;
-            depsBetweenPartitionsVector.reserve(depsBetweenPartitions.size());
-            std::copy(depsBetweenPartitions.begin(), depsBetweenPartitions.end(), depsBetweenPartitionsVector.begin());
-
-            Graph partionGraph(currentPartitionId, depsBetweenPartitionsVector);
-
-            std::unordered_map<int,int> partitionTolopologicalMapping;
-
-            for (int idxPartion = 0 ; idxPartion < partionGraph.getNbNodes() ; ++idxPartion) {
-                partitionTolopologicalMapping[partionGraph.getNode(idxPartion)->getId()] = idxPartion;
-            }
-
-            for(auto& node : nodes){
-                node->setPartitionId(partitionTolopologicalMapping[node->getPartitionId()]);
+                for(const auto& otherNode : node->getPredecessors()){
+                    if(node->getPartitionId() != otherNode->getPartitionId()){
+                        prevs[node->getPartitionId()].insert(otherNode->getPartitionId());
+                        if(nexts[node->getPartitionId()].find(otherNode->getPartitionId()) != nexts[node->getPartitionId()].end()){
+                            std::cout << "Error node " << node->getId() << " of partition " << node->getPartitionId() << "\n";
+                            std::cout << "Has node " << otherNode->getId() << " of partition " << otherNode->getPartitionId() << " has next and prev\n";
+                        }
+                    }
+                }
             }
         }
     }

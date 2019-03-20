@@ -50,7 +50,7 @@ class TestAll : public UTester< TestAll > {
 
         int nbDepsInGraph = 0;
         for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
-            const auto& node = aGraph.getNode(idxNode);
+            const auto& node = aGraph.getNodeFromId(idxNode);
             UASSERTETRUE(node->getId() == idxNode);
 
             for(const auto& pred : node->getPredecessors()){
@@ -68,8 +68,8 @@ class TestAll : public UTester< TestAll > {
         UASSERTETRUE(nbDepsInGraph == int(inDeps.second.size()));
 
         for(const auto& dep : inDeps.second){
-            const auto srcNode = aGraph.getNode(dep.first);
-            const auto dstNode = aGraph.getNode(dep.second);
+            const auto srcNode = aGraph.getNodeFromId(dep.first);
+            const auto dstNode = aGraph.getNodeFromId(dep.second);
 
             UASSERTETRUE(std::find(srcNode->getSuccessors().begin(), srcNode->getSuccessors().end(),
                                   dstNode) != srcNode->getSuccessors().end());
@@ -94,7 +94,7 @@ class TestAll : public UTester< TestAll > {
             int nbDepsInGraph = 0;
             int totalCost = 0;
             for(int idxNode = 0 ; idxNode < depGraph.getNbNodes() ; ++idxNode){
-                const auto& node = depGraph.getNode(idxNode);
+                const auto& node = depGraph.getNodeFromId(idxNode);
                 UASSERTETRUE(node->getId() == idxNode);
 
                 totalCost += node->getCost();
@@ -117,7 +117,7 @@ class TestAll : public UTester< TestAll > {
             std::unordered_map<int,int> costPerPartition;
             std::unordered_map<int,int> clusterIdPerNode;
             for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
-                const auto& node = aGraph.getNode(idxNode);
+                const auto& node = aGraph.getNodeFromId(idxNode);
                 clusterIdPerNode[node->getId()] = node->getPartitionId();
                 costPerPartition[node->getPartitionId()] += 1;
             }
@@ -127,8 +127,8 @@ class TestAll : public UTester< TestAll > {
                 const int idxDestCluster = clusterIdPerNode[dep.second];
 
                 if(idxSrcCluster != idxDestCluster){
-                    const auto& srcNode = depGraph.getNode(idxSrcCluster);
-                    const auto& dstNode = depGraph.getNode(idxDestCluster);
+                    const auto& srcNode = depGraph.getNodeFromId(idxSrcCluster);
+                    const auto& dstNode = depGraph.getNodeFromId(idxDestCluster);
 
                     UASSERTETRUE(std::find(srcNode->getSuccessors().begin(), srcNode->getSuccessors().end(),
                                           dstNode) != srcNode->getSuccessors().end());
@@ -139,18 +139,18 @@ class TestAll : public UTester< TestAll > {
 
 
             for(int idxNode = 0 ; idxNode < depGraph.getNbNodes() ; ++idxNode){
-                const auto& node = depGraph.getNode(idxNode);
+                const auto& node = depGraph.getNodeFromId(idxNode);
                 UASSERTETRUE(node->getCost() == costPerPartition[node->getId()]);
             }
         }
         {
             std::unordered_map<int,std::vector<int>> depsPerSrcCluster;
             for(const auto& dep : inDeps.second){
-                depsPerSrcCluster[aGraph.getNode(dep.first)->getPartitionId()].push_back(aGraph.getNode(dep.second)->getPartitionId());
+                depsPerSrcCluster[aGraph.getNodeFromId(dep.first)->getPartitionId()].push_back(aGraph.getNodeFromId(dep.second)->getPartitionId());
             }
 
             for(int idxNode = 0 ; idxNode < depGraph.getNbNodes() ; ++idxNode){
-                const auto& node = depGraph.getNode(idxNode);
+                const auto& node = depGraph.getNodeFromId(idxNode);
 
                 for(const auto& succ : node->getSuccessors()){
                     UASSERTETRUE(std::find(depsPerSrcCluster[node->getId()].begin(), depsPerSrcCluster[node->getId()].end(),
@@ -165,8 +165,8 @@ class TestAll : public UTester< TestAll > {
 
             std::unordered_map<int,int> clusterIdPerNode;
             for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
-                const auto& node = aGraph.getNode(idxNode);
-                const auto& clusterNode = depGraph.getNode(node->getPartitionId());
+                const auto& node = aGraph.getNodeFromId(idxNode);
+                const auto& clusterNode = depGraph.getNodeFromId(node->getPartitionId());
 
                 UASSERTETRUE(node->getPredecessors().size() == clusterNode->getPredecessors().size());
                 UASSERTETRUE(node->getSuccessors().size() == clusterNode->getSuccessors().size());

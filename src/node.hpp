@@ -12,7 +12,7 @@
 ///
 ///////////////////////////////////////////////////////////
 class Node{
-    std::list<Node*> successors;
+    std::list<Node*> successors; // TODO vector
     std::list<Node*> predecessors;
 
     int id;

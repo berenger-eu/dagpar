@@ -2,7 +2,7 @@
 #ifndef NODE_HPP
 #define NODE_HPP
 
-#include <list>
+#include <vector>
 #include <cassert>
 #include <algorithm>
 
@@ -12,8 +12,8 @@
 ///
 ///////////////////////////////////////////////////////////
 class Node{
-    std::list<Node*> successors; // TODO vector
-    std::list<Node*> predecessors;
+    std::vector<Node*> successors;
+    std::vector<Node*> predecessors;
 
     int id;
     int partitionId;
@@ -60,11 +60,11 @@ public:
         predecessors.push_back(prev);
     }
 
-    const std::list<Node*>& getSuccessors() const{
+    const std::vector<Node*>& getSuccessors() const{
         return successors;
     }
 
-    const std::list<Node*>& getPredecessors() const{
+    const std::vector<Node*>& getPredecessors() const{
         return predecessors;
     }
 };

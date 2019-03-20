@@ -16,6 +16,9 @@
 #include <array>
 // For colors
 #include <random>
+// For warning messages
+#include <iostream>
+
 
 #include "node.hpp"
 

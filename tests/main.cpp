@@ -62,6 +62,9 @@ int main(int argc, char** argv){
         default:
             std::cout << "[INFO] load " << params[1] << "\n";
             someDeps = Generator::LoadEdgeFile(params[1]);
+            if(someDeps.second.size() == 0){
+                std::cout << "[INFO] file is empty, exit...\n";
+            }
             break;
         }
     }

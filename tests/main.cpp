@@ -64,6 +64,7 @@ int main(int argc, char** argv){
             someDeps = Generator::LoadEdgeFile(params[1]);
             if(someDeps.second.size() == 0){
                 std::cout << "[INFO] file is empty, exit...\n";
+                return 1;
             }
             break;
         }
@@ -89,7 +90,7 @@ int main(int argc, char** argv){
 
     //////////////////////////////////////////////////////////////////////////
 
-    const int nbThreads = 2;
+    const int nbThreads = 8;
     const int partMaxSize = 4;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
@@ -178,7 +179,7 @@ int main(int argc, char** argv){
         int duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-advance.svg", events, nbThreads);
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
@@ -199,7 +200,7 @@ int main(int argc, char** argv){
         int duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-horizontal.svg", events, nbThreads);
     }
     {
         Graph aGraph(someDeps.first, someDeps.second);
@@ -220,7 +221,7 @@ int main(int argc, char** argv){
         int duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace.svg", events, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-diamond.svg", events, nbThreads);
     }
 
     return 0;

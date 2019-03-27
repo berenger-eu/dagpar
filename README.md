@@ -92,3 +92,15 @@ Therefore a Chukrut data could be run with:
 ./main ../data/graph-140721493545840.dot
 ```
 
+## Install Scotch
+
+```bash
+wget https://gforge.inria.fr/frs/download.php/file/37622/scotch_6.0.6.tar.gz
+tar -xvf scotch_6.0.6.tar.gz
+rm scotch_6.0.6.tar.gz
+cd scotch_6.0.6/src
+cp Make.inc/Makefile.inc.x86-64_pc_linux2 ./Makefile.inc
+make prefix=$(pwd)/install install
+```
+
+

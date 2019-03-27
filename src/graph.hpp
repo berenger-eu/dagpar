@@ -19,6 +19,9 @@
 // For warning messages
 #include <iostream>
 
+#ifdef USE_SCOTCH
+#include <scotch.h>
+#endif
 
 #include "node.hpp"
 
@@ -1306,6 +1309,86 @@ public:
 
         return Graph(int(partitionCosts.size()), dependencyBetweenPartitions, partitionIds, partitionCosts);
     }
+
+#ifdef USE_SCOTCH
+
+    void partitionScotch(const int partSize){
+        SCOTCH_Graph grafdat;
+        if(SCOTCH_graphInit (&grafdat) != 0) {
+            std::cout << "[SCOTCH] SCOTCH_graphInit failed" << std::endl;
+            return ;
+        }
+
+        // 8.2.2 Graph format
+        SCOTCH_Num baseval = 0; // Base value for indexing
+        SCOTCH_Num vertnbr = getNbNodes(); // Number of vertices
+        SCOTCH_Num edgenbr = 0; // Number of edges
+        std::unique_ptr<SCOTCH_Num[]> verttab(new SCOTCH_Num[vertnbr+1]()); // Start indices in edgetab
+        verttab[0] = 0;
+
+        SCOTCH_Num* vendtab = &verttab[1];
+        SCOTCH_Num* velotab = nullptr; // Weight for the vertnbr vertices
+        std::vector<SCOTCH_Num> edgetab; // adjacency array for every vertex
+        SCOTCH_Num* edlotab = nullptr; // weight for every arc
+        SCOTCH_Num* vlbltab = nullptr;
+
+        for(int idxNode = 0 ; idxNode < getNbNodes() ; ++idxNode){
+            const auto& node = nodesNotTopological[idxNode];
+            const auto& successors = node->getSuccessors();
+            const int nbDeps = int(successors.size());
+            vendtab[idxNode] = verttab[idxNode] + nbDeps;
+
+            assert(int(edgetab.size()) == verttab[idxNode]);
+            int idxDep = 0;
+            for(const auto& dep : successors){
+                edgetab.push_back(dep->getId());
+                idxDep += 1;
+            };
+            assert(int(edgetab.size()) == vendtab[idxNode]);
+        }
+
+        edgenbr = verttab[vertnbr];
+
+        // 8.6.3
+        if(SCOTCH_graphBuild(&grafdat, baseval, vertnbr,
+                             verttab.get(), vendtab, velotab,
+                             vlbltab, edgenbr, edgetab.data(),
+                             edlotab) != 0){
+            std::cout << "[SCOTCH] SCOTCH_graphBuild failed" << std::endl;
+            return ;
+        }
+
+        if(SCOTCH_graphCheck(&grafdat) != 0){
+            std::cout << "[SCOTCH] SCOTCH_graphCheck failed" << std::endl;
+            return ;
+        }
+
+        SCOTCH_Arch *archptr;
+
+
+        SCOTCH_Strat straptr;
+        SCOTCH_Num flagval = SCOTCH_STRATBALANCE | SCOTCH_STRATQUALITY;
+        SCOTCH_Num pwgtmax = partSize;
+        double densmin = 0;
+        double bbalval = 2.0;
+        // 8.15.2
+        if(SCOTCH_stratGraphClusterBuild(&straptr, flagval, pwgtmax,
+                                         densmin, bbalval) != 0){
+            std::cout << "[SCOTCH] SCOTCH_stratGraphClusterBuild failed" << std::endl;
+            return ;
+        }
+
+        std::unique_ptr<SCOTCH_Num[]> parttab(new SCOTCH_Num[getNbNodes()]());
+        // 8.7.1
+        if(SCOTCH_graphMap(&grafdat, &archptr, &straptr, parttab.get()) != 0){
+            std::cout << "[SCOTCH] SCOTCH_graphMap failed" << std::endl;
+            return ;
+        }
+
+
+        SCOTCH_graphExit(&grafdat);
+    }
+#endif
 };
 
 #endif

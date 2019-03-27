@@ -20,6 +20,22 @@ if( DAGPAR_USE_COVERAGE )
     # lcov --directory CMakeFiles/ -c -o coverage-rapport.info
     # genhtml -o ./coverage -t "Coverage example" coverage-rapport.info
 endif()
+
+#################################################
+
+if(SCOTCH_DIR OR DEFINED ENV{SCOTCH_DIR})
+    message(STATUS "Main -- use scotch")
+    if(SCOTCH_DIR)
+        include_directories("${SCOTCH_DIR}/include/")
+        link_directories("${SCOTCH_DIR}/lib/")
+    else()
+        include_directories("$ENV{SCOTCH_DIR}/include/")
+        link_directories("$ENV{SCOTCH_DIR}/lib/")    
+    endif()
+    set(CMAKE_CXX_FLAGS "-DUSE_SCOTCH")
+    list(APPEND DAGPAR_LIBRARIES scotch scotcherr)
+endif()
+
 #################################################
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")

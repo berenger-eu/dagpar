@@ -92,6 +92,22 @@ Therefore a Chukrut data could be run with:
 ./main ../data/graph-140721493545840.dot
 ```
 
+## Install Metis
+
+```bash
+wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz
+tar -xvf metis-5.1.0.tar.gz
+rm metis-5.1.0.tar.gz
+cd metis-5.1.0
+make config prefix=$(pwd)/install
+make
+make install
+export METIS_DIR=$(pwd)/install
+
+# Then
+cmake .. -DMETIS_DIR=$METIS_DIR
+```
+
 ## Install Scotch
 
 ```bash
@@ -100,7 +116,12 @@ tar -xvf scotch_6.0.6.tar.gz
 rm scotch_6.0.6.tar.gz
 cd scotch_6.0.6/src
 cp Make.inc/Makefile.inc.x86-64_pc_linux2 ./Makefile.inc
+make
 make prefix=$(pwd)/install install
+export SCOTCH_DIR=$(pwd)/install
+
+# Then
+cmake .. -DMETIS_DIR=$METIS_DIR -DSCOTCH_DIR=$SCOTCH_DIR -DUSE_SCOTCH_AS_METIS=ON
 ```
 
 

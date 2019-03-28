@@ -223,28 +223,13 @@ int main(int argc, char** argv){
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-diamond.svg", events, nbThreads);
     }
-#ifdef USE_SCOTCH
-
+#ifdef USE_METIS
     {
         Graph aGraph(someDeps.first, someDeps.second);
         assert(aGraph.isDag());
-        aGraph.partitionScotch(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-scotch.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-scotch.dot -o /tmp/agraph-scotch.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-scotch.dot");
-        std::cout << "Generate pdf of the scotch partition graph with: dot -Tpdf /tmp/depgraph-scotch.dot -o /tmp/depgraph-scotch.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after scotch partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-scotch.svg", events, nbThreads);
+        aGraph.partitionMetis(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-metis.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-metis.dot -o /tmp/agraph-metis.pdf\n";
     }
 #endif
 

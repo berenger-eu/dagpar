@@ -223,6 +223,27 @@ int main(int argc, char** argv){
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-diamond.svg", events, nbThreads);
     }
+    {
+        Graph aGraph(someDeps.first, someDeps.second);
+        assert(aGraph.isDag());
+        aGraph.partitionTemporalPart(partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-temporal.dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-temporal.dot -o /tmp/agraph-temporal.pdf\n";
+
+        Graph depGraph = aGraph.getPartitionGraph();
+        assert(depGraph.isDag());
+        depGraph.saveToDot("/tmp/depgraph-temporal.dot");
+        std::cout << "Generate pdf of the temporal partition graph with: dot -Tpdf /tmp/depgraph-temporal.dot -o /tmp/depgraph-temporal.pdf\n";
+
+        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+        std::cout << "Degree of parallelism after temporal partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+
+        int duration;
+        std::vector<Executor::Event> events;
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-temporal.svg", events, nbThreads);
+    }
 #ifdef USE_METIS
     {
         Graph aGraph(someDeps.first, someDeps.second);

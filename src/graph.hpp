@@ -1408,6 +1408,58 @@ public:
         }
     }
 #endif
+
+    // Derived from TEMPORAL  PARTITIONING  AND  SCHEDULING  DATA  FLOW  GRAPHS  FOR  RECONFIGURABLE
+    // The fig 9 is not true and this is easy to see because the ready list
+    // is a lifo
+    void partitionTemporalPart(const int maxSize) const{
+        std::vector<int> counterRelease(nodes.size(), 0);
+
+        int current_size = 0;
+        int i = 0;
+
+        std::deque<Node*> sources;
+        for(auto& node : nodes){
+            if(node->getPredecessors().size() == 0){
+
+                node->setPartitionId(i);
+                current_size += 1;
+
+                if(current_size == maxSize){
+                    i += 1;
+                    current_size = 0;
+                }
+
+                for(const auto& otherNode : node->getSuccessors()){
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        while(sources.size()){
+            Node* selectedNode = sources.back();
+            sources.pop_back();
+
+            selectedNode->setPartitionId(i);
+            current_size += 1;
+            if(current_size == maxSize){
+                i += 1;
+                current_size = 0;
+            }
+
+            for(const auto& otherNode : selectedNode->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    sources.push_back(otherNode);
+                }
+            }
+        }
+    }
 };
 
 #endif

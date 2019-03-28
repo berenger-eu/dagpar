@@ -1310,7 +1310,7 @@ public:
         return Graph(int(partitionCosts.size()), dependencyBetweenPartitions, partitionIds, partitionCosts);
     }
 
-//#ifdef USE_METIS
+#ifdef USE_METIS
 
     void partitionMetis(const int partSize, const bool useKway = true){
         idx_t nvtxs = getNbNodes();
@@ -1407,7 +1407,7 @@ public:
             }
         }
     }
-//#endif
+#endif
 };
 
 #endif

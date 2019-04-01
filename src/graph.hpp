@@ -1511,22 +1511,6 @@ public:
 
                 if(mark[u->getId()]) continue;
 
-                for(const auto& v : u->getSuccessors()){
-                    if(mark[v->getId()]) continue;
-
-                    if(top[u->getId()] != top[v->getId()]-1 && v->getPredecessors().size() != 1 && u->getSuccessors().size() != 1) continue;
-
-                    M.insert(std::make_pair(u->getId(), v->getId()));
-
-                    for(const auto& w : u->getSuccessors()){
-                        if(top[u->getId()] != top[w->getId()]-1){
-                            mark[w->getId()] = false;
-                        }
-                    }
-
-                    mark[v->getId()] = true;
-                }
-
                 for(const auto& v : u->getPredecessors()){
                     if(mark[v->getId()]) continue;
 
@@ -1541,10 +1525,25 @@ public:
                     }
 
                     mark[v->getId()] = true;
+                    mark[u->getId()] = true;
                 }
 
+                for(const auto& v : u->getSuccessors()){
+                    if(mark[v->getId()]) continue;
 
-                mark[u->getId()] = true;
+                    if(top[u->getId()] != top[v->getId()]-1 && v->getPredecessors().size() != 1 && u->getSuccessors().size() != 1) continue;
+
+                    M.insert(std::make_pair(u->getId(), v->getId()));
+
+                    for(const auto& w : u->getSuccessors()){
+                        if(top[u->getId()] != top[w->getId()]-1){
+                            mark[w->getId()] = false;
+                        }
+                    }
+
+                    mark[v->getId()] = true;
+                    mark[u->getId()] = true;
+                }
             }
         }
 
@@ -1560,12 +1559,12 @@ public:
             return nbCuts;
         };
 
-        auto CompGain = [this](const Node* u, const std::vector<int>& part, const int d, const auto& allGain) -> int {
+        auto CompGain = [this](const Node* u, const std::vector<int>& part, const int d) -> int {
             int gain = 0;
 
             for(const auto& v : u->getSuccessors()){
-                const auto cuv = allGain[u->getId()][v->getId()];
-                const auto cvu = allGain[v->getId()][u->getId()];
+                const auto cuv = 1;
+                const auto cvu = 1;
                 if(part[v->getId()] == part[u->getId()]){
                     gain -= cuv;
                 }
@@ -1575,8 +1574,8 @@ public:
             }
 
             for(const auto& v : u->getPredecessors()){
-                const auto cuv = allGain[u->getId()][v->getId()];
-                const auto cvu = allGain[v->getId()][u->getId()];
+                const auto cuv = 1;
+                const auto cvu = 1;
                 if(part[v->getId()] == part[u->getId()]){
                     gain -= cuv;
                 }
@@ -1591,33 +1590,29 @@ public:
 
         std::vector<int> part(getNbNodes(), -1);
         {// Greedy algorithm
-            std::vector<std::vector<int>> allGain; // TODO
-            std::vector<int> gain;
-
+            std::vector<int> gain(getNbNodes(), 0);
 
             const int k = (getNbNodes()+maxSize-1)/maxSize;
-            const double lb = 0.9 / (getNbNodes() / k);
+            const double lb = 0.9 * (getNbNodes() / k);
             std::vector<bool> free(getNbNodes(), true);
 
-            for(int i = 0 ; i < k ; ++i){
+            for(int i = 0 ; i < k-1 ; ++i){
                 std::set<Node*> set;
 
                 for(auto& u : nodes){
-                    if(u->getPredecessors().size() == 0){
-                        set.insert(u);
-                    }
-                    else{
-                        for(auto& v : u->getPredecessors()){
-                            if(free[v->getId()] == false){
-                                set.insert(u);
-                                break;
+                    if(part[u->getId()] == -1){
+                        if(u->getPredecessors().size() == 0){
+                            set.insert(u);
+                        }
+                        else{
+                            for(auto& v : u->getPredecessors()){
+                                if(free[v->getId()] == false){
+                                    set.insert(u);
+                                    break;
+                                }
                             }
                         }
                     }
-                }
-
-                for(auto& u : set){
-                    gain[u->getId()] = CompGain(u, part, i, allGain);
                 }
 
                 auto cmp = [](const auto& n1, const auto& n2){
@@ -1626,8 +1621,13 @@ public:
 
                 std::priority_queue<std::pair<int,Node*>,  std::vector<std::pair<int,Node*>>, decltype(cmp)> heap(cmp);
 
+                for(auto& u : set){
+                    gain[u->getId()] = CompGain(u, part, i);
+                    heap.push(std::make_pair(gain[u->getId()],u));
+                }
+
                 int size_Vi = 0;
-                while(size_Vi < lb){
+                while(size_Vi < lb && heap.size()){
                     Node* u = heap.top().second;
                     heap.pop();
 
@@ -1644,16 +1644,29 @@ public:
                         }
 
                         if( ready ){
-                            gain[v->getId()] = CompGain(v, part, i, allGain);
+                            gain[v->getId()] = CompGain(v, part, i);
                             heap.push(std::make_pair(gain[v->getId()],v));
                         }
                     }
-                }
 
+                    size_Vi += 1;
+                }
+            }
+            for(auto& u : nodes){
+                if(part[u->getId()] == -1){
+                    part[u->getId()] = k;
+                }
             }
         }
+        {// TODO
+            for(auto& u : nodes){
+                u->setPartitionId(part[u->getId()]);
+            }
+            return;
+        }
 
-        auto Update = [&CompGain](auto& heap, std::vector<bool>& moveto, auto& part, auto& gain, auto& u, auto& allGain){
+        auto Update = [&CompGain](auto& heap, std::vector<bool>& moveto, const std::vector<int>& part,
+                                  auto& gain, auto& u){
             const int k = int(part.size());
             int max = std::numeric_limits<int>::min();
             int min = std::numeric_limits<int>::max();
@@ -1678,26 +1691,27 @@ public:
 
             if( max != part[u->getId()] && min == part[u->getId()]){
                 moveto[u->getId()] = max;
-                gain[u->getId()] = CompGain(u, part, max, allGain);
-                heap.push(std::make_pair(gain[u->getId()], u));
+                gain[u->getId()][max] = CompGain(u, part, max);
+                heap.push(std::make_pair(u, gain[u->getId()][max]));
             }
             else if( min != part[u->getId()] && max == part[u->getId()]){
                 moveto[u->getId()] = min;
-                gain[u->getId()] = CompGain(u, part, min, allGain);
-                heap.push(std::make_pair(gain[u->getId()], u));
+                gain[u->getId()][min] = CompGain(u, part, min);
+                heap.push(std::make_pair(u, gain[u->getId()][min]));
             }
             else if( min != part[u->getId()] && max != part[u->getId()]){
-                const int gain1 = CompGain(u, part, min, allGain);
-                const int gain2 = CompGain(u, part, max, allGain);
+                const int gain1 = CompGain(u, part, min);
+                const int gain2 = CompGain(u, part, max);
                 if(gain1 > gain2){
                     moveto[u->getId()] = min;
-                    gain[u->getId()] = gain1;
+                    gain[u->getId()][min] = gain1;
+                    heap.push(std::make_pair(u, gain[u->getId()][min]));
                 }
                 else{
                     moveto[u->getId()] = max;
-                    gain[u->getId()] = gain2;
+                    gain[u->getId()][max] = gain2;
+                    heap.push(std::make_pair(u, gain[u->getId()][max]));
                 }
-                heap.push(std::make_pair(gain[u->getId()], u));
             }
         };
 
@@ -1726,35 +1740,51 @@ public:
             QG = getPartitionGraph();
         };
 
+        auto ComputeEdgeCut = []() -> int {
+            return 0;// TODO
+        };
+
         {// Acyclic kway refinement
+            std::vector<std::vector<int>> gain(getNbNodes());
+
             std::vector<int> copy = part;
             std::vector<bool> moved(getNbNodes(), false);
             std::vector<int> moves(getNbNodes(), -1);
 
-            double ec = ComputeEdgeCut();
-            ecmin = ec;
+            int ec = ComputeEdgeCut();
+            int ecmin = ec;
 
             Graph QG = BuildQuotientGraph(part);
 
             std::vector<int> maxgain(getNbNodes(), 0);
             for(auto& u : nodes){
+                gain[u->getId()].resize(part.size());
                 for(int k = 0 ; k < int(part.size()); ++k){
                     gain[u->getId()][k] = CompGain(u, part, k);
                     maxgain[u->getId()] = std::max(maxgain[u->getId()], gain[u->getId()][k]);
                 }
             }
-            std::priority_queue<int,  std::vector<int>, std::greater<int>> heap;
+
+            auto cmp = [](const auto& n1, const auto& n2){
+                return n1.second > n2.second;
+            };
+
+            std::priority_queue<std::pair<Node*,int>,  std::vector<std::pair<Node*, int>>, decltype(cmp)> heap(cmp);
+            for(auto& u : nodes){
+                heap.push(std::make_pair(u, maxgain[u->getId()]));
+            }
+
             int idx = 0;
             int ecidx = 0;
 
             while(!heap.empty()){
-                u = heap.front();
-                heap.top();
+                Node* u = heap.top().first;
+                heap.pop();
 
                 std::vector<std::pair<int,int>> parts;
                 for(int k = 0 ; k < int(part.size()); ++k){
-                    parts.first = k;
-                    parts.second = gain[u->getId()][k];
+                    parts[k].first = k;
+                    parts[k].second = gain[u->getId()][k];
                 }
 
                 std::sort(parts.begin(), parts.end(), [](const auto& p1, const auto& p2){
@@ -1764,7 +1794,7 @@ public:
                 int i = 0;
                 int k = parts[0].first;
 
-                while(CreateCycle(QG, u, k, part) && gain[u->getId()][k] >= gain[u->getId()][parts[2].first]){
+                while(i < int(part.size())  && CreateCycle(QG, u, k, part) && gain[u->getId()][k] >= gain[u->getId()][parts[2].first]){
                     i += 1;
                     k = parts[i].first;
                 }
@@ -1775,7 +1805,7 @@ public:
                 part[u->getId()] = k;
                 UpdateQuotientGraph(QG, u, k, part);
 
-                ec -= gain[u->getId()];
+                ec -= gain[u->getId()][k];
                 if( ec < ecmin ){
                     ecmin = ec;
                     ecidx = idx;
@@ -1783,13 +1813,13 @@ public:
 
                 for(const auto& v : u->getSuccessors()){
                     if(!moved[v->getId()]){
-                        Update(heap, gain, v);
+                        Update(heap, moved, part, gain, v);
                     }
                 }
 
                 for(const auto& v : u->getPredecessors()){
                     if(!moved[v->getId()]){
-                        Update(heap, gain, v);
+                        Update(heap, moved, part, gain, v);
                     }
                 }
             }

@@ -1142,7 +1142,8 @@ public:
         struct InfoPartition{
             int nbNnodesInPartition;
             int startingLevel;
-            std::set<int> idsAllParentPartitions;
+            std::set<int> idsParentPartitionsSuccessors;
+            std::set<int> idsParentPartitionsPredecessors;
         };
 
         std::vector<InfoPartition> proceedPartitionsInfo;
@@ -1171,8 +1172,10 @@ public:
                 assert(uniqueParentPartitionId < int(proceedPartitionsInfo.size()));
                 const auto& uniqueParentPartitionInfo = proceedPartitionsInfo[uniqueParentPartitionId];
 
-                if(selectedNodeDistFromTop < uniqueParentPartitionInfo.startingLevel + 2 * nbLevelsInHalfDiamond + 1){
+                if(selectedNodeDistFromTop < uniqueParentPartitionInfo.startingLevel + 2 * nbLevelsInHalfDiamond + 1
+                        && uniqueParentPartitionInfo.nbNnodesInPartition < maxSize){
                     selectedNode->setPartitionId(uniqueParentPartitionId);
+                    proceedPartitionsInfo[uniqueParentPartitionId].nbNnodesInPartition += 1;
                 }
                 else{
                     const int currentPartitionId = int(proceedPartitionsInfo.size());
@@ -1181,15 +1184,16 @@ public:
                     proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                     proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                     proceedPartitionsInfo.back().nbNnodesInPartition = 1;
-                    proceedPartitionsInfo.back().idsAllParentPartitions = proceedPartitionsInfo[uniqueParentPartitionId].idsAllParentPartitions;
-                    proceedPartitionsInfo.back().idsAllParentPartitions.insert(uniqueParentPartitionId);
+                    proceedPartitionsInfo.back().idsParentPartitionsPredecessors.insert(uniqueParentPartitionId);
+                    proceedPartitionsInfo[uniqueParentPartitionId].idsParentPartitionsSuccessors.insert(currentPartitionId);
                 }
             }
             else{
                 std::vector<std::tuple<int,int,int>> possibleCurrentPartitionsWithDistAndNb;
                 for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
                     const auto& parentPartitionInfo = proceedPartitionsInfo[parentPartitionId];
-                    if(selectedNodeDistFromTop < parentPartitionInfo.startingLevel + nbLevelsInHalfDiamond + 1){
+                    if(selectedNodeDistFromTop < parentPartitionInfo.startingLevel + nbLevelsInHalfDiamond + 1
+                            && parentPartitionInfo.nbNnodesInPartition < maxSize){
                         possibleCurrentPartitionsWithDistAndNb.emplace_back(parentPartitionId,
                                                                             parentPartitionInfo.startingLevel,
                                                                             parentPartitionInfo.nbNnodesInPartition);
@@ -1209,12 +1213,25 @@ public:
                     const int testPartitionId = std::get<0>(testPartitionIdWithDist);
                     bool testPartitionIdIsLinkedToAParent = false;
 
-                    for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
-                        if(testPartitionId != parentPartitionId
-                                    && proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.find(testPartitionId)
-                                            != proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.end()){
+                    std::deque<int> children;
+                    for(const auto& idxChild : proceedPartitionsInfo[testPartitionId].idsParentPartitionsSuccessors){
+                        if(selectedNodeParentPartitionIds.find(idxChild) != selectedNodeParentPartitionIds.end()){
                             testPartitionIdIsLinkedToAParent = true;
                             break;
+                        }
+                        children.push_back(idxChild);
+                    }
+
+                    while(testPartitionIdIsLinkedToAParent == false && children.size()){
+                        const int testPartitionIter = children.front();
+                        children.pop_front();
+
+                        for(const auto& idxChild : proceedPartitionsInfo[testPartitionIter].idsParentPartitionsSuccessors){
+                            if(selectedNodeParentPartitionIds.find(idxChild) != selectedNodeParentPartitionIds.end()){
+                                testPartitionIdIsLinkedToAParent = true;
+                                break;
+                            }
+                            children.push_back(idxChild);
                         }
                     }
 
@@ -1223,8 +1240,12 @@ public:
                         proceedPartitionsInfo[testPartitionId].nbNnodesInPartition += 1;
 
                         selectedNodeParentPartitionIds.erase(testPartitionId);
-                        proceedPartitionsInfo[testPartitionId].idsAllParentPartitions.insert(selectedNodeParentPartitionIds.begin(),
+                        proceedPartitionsInfo[testPartitionId].idsParentPartitionsPredecessors.insert(selectedNodeParentPartitionIds.begin(),
                                                                                              selectedNodeParentPartitionIds.end());
+
+                        for(const auto& newParent : selectedNodeParentPartitionIds){
+                            proceedPartitionsInfo[newParent].idsParentPartitionsSuccessors.insert(testPartitionId);
+                        }
 
                         nodeHasBeenInserted = true;
                         break;
@@ -1238,11 +1259,10 @@ public:
                     proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                     proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                     proceedPartitionsInfo.back().nbNnodesInPartition = 1;
+                    proceedPartitionsInfo.back().idsParentPartitionsPredecessors = selectedNodeParentPartitionIds;
 
                     for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
-                        proceedPartitionsInfo.back().idsAllParentPartitions.insert(proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.begin(),
-                                                                                   proceedPartitionsInfo[parentPartitionId].idsAllParentPartitions.end());
-                        proceedPartitionsInfo.back().idsAllParentPartitions.insert(parentPartitionId);
+                        proceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.insert(currentPartitionId);
                     }
                 }
             }

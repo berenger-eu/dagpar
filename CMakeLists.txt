@@ -46,6 +46,13 @@ endif()
 
 #################################################
 
+option(DAGPAR_USE_ACYCLIC "Should be ON to enable code acyclic algo (need C++17)" OFF)
+if(DAGPAR_USE_ACYCLIC)
+    set(CMAKE_CXX_FLAGS "-DUSE_ACYCLIC")
+endif()
+
+#################################################
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 SET(DAGPAR_EXTRA_FLAG "-m64 -march=native -Wextra -Wnon-virtual-dtor -Wshadow -Wpointer-arith -Wcast-qual -Wconversion  -Wall -Wno-sign-conversion -pedantic -Woverloaded-virtual -Wpointer-arith -Wcast-qual -Wconversion -Wno-error" CACHE STRING "Additional flags"  )

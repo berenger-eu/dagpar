@@ -1,10 +1,18 @@
 image: berenger/spetabaruci
 
-dagpar:
+dagpar-simple:
   script:
     - mkdir build
     - cd build
     - VERBOSE=1 CXX=g++-7 cmake ..
+    - make
+    - CTEST_OUTPUT_ON_FAILURE=TRUE make test
+
+dagpar-advanced:
+  script:
+    - mkdir build
+    - cd build
+    - VERBOSE=1 CXX=g++-7 cmake .. -DDAGPAR_USE_ACYCLIC=ON
     - make
     - CTEST_OUTPUT_ON_FAILURE=TRUE make test
 

@@ -117,10 +117,13 @@ int main(int argc, char** argv){
                                      }},
                                     {"temporal", [](Graph& graph, const int clusterSize){
                                         graph.partitionTemporalPart(clusterSize);
-                                     }},
+                                     }}
+#ifdef USE_ACYCLIC
+                                    ,
                                     {"acyclic", [](Graph& graph, const int clusterSize){
                                         graph.partitionAcyclic(clusterSize);
                                      }}
+#endif
                                     };
 
 

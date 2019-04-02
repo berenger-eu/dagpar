@@ -1342,7 +1342,6 @@ public:
     }
 
 #ifdef USE_METIS
-
     void partitionMetis(const int partSize, const bool useKway = true){
         idx_t nvtxs = getNbNodes();
         idx_t ncon = 1;
@@ -1492,6 +1491,7 @@ public:
         }
     }
 
+#ifdef USE_ACYCLIC
     // Derived from Acyclic Partitioning of Large Directed Acyclic Graphs
     void partitionAcyclic(const int maxSize){
         {// CompMatching
@@ -1872,6 +1872,7 @@ public:
             return;
         }
     }
+#endif
 };
 
 #endif

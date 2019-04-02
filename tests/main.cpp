@@ -1,4 +1,5 @@
 #include <iostream>
+#include <functional>
 
 #include "graph.hpp"
 #include "executor.hpp"
@@ -94,18 +95,45 @@ int main(int argc, char** argv){
     const int partMaxSize = 4;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
-    {
+
+    const std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods= {
+                                    {"random", [](Graph& graph, const int clusterSize){
+                                        graph.partitionRandom(clusterSize);
+                                     }},
+                                     {"greedy", [](Graph& graph, const int clusterSize){
+                                         graph.partitionGreedy(clusterSize);
+                                      }},
+                                     {"backtrack", [](Graph& graph, const int clusterSize){
+                                         graph.partitionBacktrack(clusterSize);
+                                      }},
+                                     {"advanced", [](Graph& graph, const int clusterSize){
+                                         graph.partition(clusterSize, clusterSize);
+                                      }},
+                                    {"horizontal", [](Graph& graph, const int clusterSize){
+                                        graph.partitionHorizontal(clusterSize);
+                                     }},
+                                    {"diamond", [](Graph& graph, const int clusterSize){
+                                        graph.partitionDiamond(clusterSize);
+                                     }},
+                                    {"temporal", [](Graph& graph, const int clusterSize){
+                                        graph.partitionTemporalPart(clusterSize);
+                                     }},
+                                    {"acyclic", [](Graph& graph, const int clusterSize){
+                                        graph.partitionAcyclic(clusterSize);
+                                     }}
+                                    };
+
+
+    for(const auto& method : allPartitionMethods){
         Graph aGraph(someDeps.first, someDeps.second);
         std::cout << "Number of nodes : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism one the original graph : " << degGraph.first << "  " << degGraph.second << "\n";
-        aGraph.saveToDot("/tmp/agraph-original.dot");
-        std::cout << "Generate pdf of the original graph with: dot -Tpdf /tmp/agraph-original.dot -o /tmp/agraph-original.pdf\n";
+        std::cout << "Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
-        aGraph.partitionRandom(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-rand.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-rand.dot -o /tmp/agraph-rand.pdf\n";
+        method.second(aGraph, partMaxSize);
+        aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-" << method.first << ".dot -o /tmp/agraph-" << method.first << ".pdf\n";
 
         Graph depGraph = aGraph.getPartitionGraph();
         assert(depGraph.isDag());
@@ -113,136 +141,13 @@ int main(int argc, char** argv){
         std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
         std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-rand.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionGreedy(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-greedy.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-greedy.dot -o /tmp/agraph-greedy.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-greedy.dot");
-        std::cout << "Generate pdf of the final partition graph with greedy method with: dot -Tpdf /tmp/depgraph-greedy.dot -o /tmp/depgraph-greedy.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after greedy partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+        depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/depgraph-" << method.first << ".dot -o /tmp/depgraph-" << method.first << ".pdf\n";
 
         int duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-greedy.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionBacktrack(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-backtrack.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-backtrack.dot -o /tmp/agraph-backtrack.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-backtrack.dot");
-        std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph-backtrack.dot -o /tmp/depgraph-backtrack.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after backtrack partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-backtrack.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partition(partMinSize,partMaxSize);
-        aGraph.saveToDot("/tmp/agraph.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph.dot -o /tmp/agraph.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph.dot");
-        std::cout << "Generate pdf of the final partition graph with: dot -Tpdf /tmp/depgraph.dot -o /tmp/depgraph.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after advanced partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-advance.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionHorizontal(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-horizontal.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-horizontal.dot -o /tmp/agraph-horizontal.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-horizontal.dot");
-        std::cout << "Generate pdf of the horizontal partition graph with: dot -Tpdf /tmp/depgraph-horizontal.dot -o /tmp/depgraph-horizontal.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after horizontal partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-horizontal.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionDiamond(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-diamond.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-diamond.dot -o /tmp/agraph-diamond.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-diamond.dot");
-        std::cout << "Generate pdf of the diamond partition graph with: dot -Tpdf /tmp/depgraph-diamond.dot -o /tmp/depgraph-diamond.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after diamond partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-diamond.svg", events, nbThreads);
-    }
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionTemporalPart(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-temporal.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-temporal.dot -o /tmp/agraph-temporal.pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        depGraph.saveToDot("/tmp/depgraph-temporal.dot");
-        std::cout << "Generate pdf of the temporal partition graph with: dot -Tpdf /tmp/depgraph-temporal.dot -o /tmp/depgraph-temporal.pdf\n";
-
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after temporal partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        int duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-temporal.svg", events, nbThreads);
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
     }
 #ifdef USE_METIS
     {

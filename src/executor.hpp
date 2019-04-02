@@ -83,7 +83,7 @@ public:
         }
     };
 
-    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers){
+    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers, const int overheadPerTask = 0){
         if(inGraph.getNbNodes() == 0){
             return std::make_tuple(0,std::vector<Event>());
         }
@@ -110,7 +110,7 @@ public:
             const auto& node = inGraph.getNodeFromId(idxNode);
             assert(idxNode == node->getId());
 
-            events[node->getId()].init(node->getId(), node->getCost());
+            events[node->getId()].init(node->getId(), node->getCost() + overheadPerTask);
 
             if(node->getPredecessors().size() == 0){
                 readyTasks.push_back(node->getId());
@@ -133,7 +133,7 @@ public:
             const int workerId = idleWorkerCount.back();
             idleWorkerCount.pop_back();
 
-            Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost(),
+            Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost() + overheadPerTask,
                      readyTaskId,
                      workerId};
             workers.push(wk);
@@ -175,7 +175,7 @@ public:
                 const int workerId = idleWorkerCount.back();
                 idleWorkerCount.pop_back();
 
-                Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost(),
+                Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost() + overheadPerTask,
                          readyTaskId,
                          workerId};
                 workers.push(wk);

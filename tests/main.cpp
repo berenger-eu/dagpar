@@ -130,8 +130,6 @@ int main(int argc, char** argv){
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
-        aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
-        std::cout << "Generate pdf of the " << method.first << " graph with: dot -Tpdf /tmp/agraph-" << method.first << ".dot -o /tmp/agraph-" << method.first << ".pdf\n";
 
         method.second(aGraph, partMaxSize);
         aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
@@ -142,6 +140,9 @@ int main(int argc, char** argv){
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
         std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+
+        depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/depgraph-" << method.first << ".dot -o /tmp/depgraph-" << method.first << ".pdf\n";
 
         int duration;
         std::vector<Executor::Event> events;

@@ -1547,7 +1547,7 @@ public:
             }
         }
 
-        auto CompEdgeCut = [this](const std::vector<int>& part) -> int {
+        auto ComputeEdgeCut = [this](const std::vector<int>& part) -> int {
             int nbCuts = 0;
             for(auto& u : nodes){
                 for(const auto& v : u->getSuccessors()){
@@ -1590,26 +1590,30 @@ public:
 
         std::vector<int> part(getNbNodes(), -1);
         {// Greedy algorithm
-            std::vector<int> gain(getNbNodes(), 0);
-
-            const int k = (getNbNodes()+maxSize-1)/maxSize;
-            const double lb = 0.9 * (getNbNodes() / k);
+            int k = (getNbNodes()+maxSize-1)/maxSize;
+            const double lb = 1.1 * (getNbNodes() / k);
             std::vector<bool> free(getNbNodes(), true);
 
-            for(int i = 0 ; i < k-1 ; ++i){
+            for(int i = 0 ; i < k ; ++i){
                 std::set<Node*> set;
 
                 for(auto& u : nodes){
-                    if(part[u->getId()] == -1){
+                    if(free[u->getId()]){
+                        assert(part[u->getId()] == -1);
                         if(u->getPredecessors().size() == 0){
                             set.insert(u);
                         }
                         else{
+                            bool ready = true;
                             for(auto& v : u->getPredecessors()){
-                                if(free[v->getId()] == false){
-                                    set.insert(u);
+                                if(free[v->getId()] == true){
+                                    ready = false;
                                     break;
                                 }
+                            }
+                            if(ready){
+                                set.insert(u);
+                                break;
                             }
                         }
                     }
@@ -1622,8 +1626,8 @@ public:
                 std::priority_queue<std::pair<int,Node*>,  std::vector<std::pair<int,Node*>>, decltype(cmp)> heap(cmp);
 
                 for(auto& u : set){
-                    gain[u->getId()] = CompGain(u, part, i);
-                    heap.push(std::make_pair(gain[u->getId()],u));
+                    const int gain = CompGain(u, part, i);
+                    heap.push(std::make_pair(gain,u));
                 }
 
                 int size_Vi = 0;
@@ -1640,12 +1644,14 @@ public:
                         for(auto& w : v->getPredecessors()){
                             if(free[w->getId()] == true){
                                 ready = false;
+                                break;
                             }
                         }
 
                         if( ready ){
-                            gain[v->getId()] = CompGain(v, part, i);
-                            heap.push(std::make_pair(gain[v->getId()],v));
+                            assert(free[v->getId()]);
+                            const int gain = CompGain(v, part, i);
+                            heap.push(std::make_pair(gain,v));
                         }
                     }
 
@@ -1658,14 +1664,23 @@ public:
                 }
             }
         }
-        {// TODO
-            for(auto& u : nodes){
-                u->setPartitionId(part[u->getId()]);
-            }
-            return;
-        }
 
-        auto Update = [&CompGain](auto& heap, std::vector<bool>& moveto, const std::vector<int>& part,
+        auto UpdateHeap = [](auto& heap, auto&& newItem){
+            std::vector<typename std::decay<decltype (heap.top())>::type> values;
+            while(heap.size()){
+                auto item = heap.top();
+                heap.pop();
+                if(item.first != newItem.first){
+                    values.push_back(item);
+                }
+            }
+            heap.push(newItem);
+            for(auto& item : values){
+                heap.push(item);
+            }
+        };
+
+        auto Update = [&CompGain, &UpdateHeap](auto& heap, std::vector<bool>& moveto, const std::vector<int>& part,
                                   auto& gain, auto& u){
             const int k = int(part.size());
             int max = std::numeric_limits<int>::min();
@@ -1692,12 +1707,14 @@ public:
             if( max != part[u->getId()] && min == part[u->getId()]){
                 moveto[u->getId()] = max;
                 gain[u->getId()][max] = CompGain(u, part, max);
-                heap.push(std::make_pair(u, gain[u->getId()][max]));
+                //heap.push(std::make_pair(u, gain[u->getId()][max]));
+                UpdateHeap(heap, std::make_pair(u, gain[u->getId()][max]));
             }
             else if( min != part[u->getId()] && max == part[u->getId()]){
                 moveto[u->getId()] = min;
                 gain[u->getId()][min] = CompGain(u, part, min);
-                heap.push(std::make_pair(u, gain[u->getId()][min]));
+                //heap.push(std::make_pair(u, gain[u->getId()][min]));
+                UpdateHeap(heap, std::make_pair(u, gain[u->getId()][min]));
             }
             else if( min != part[u->getId()] && max != part[u->getId()]){
                 const int gain1 = CompGain(u, part, min);
@@ -1705,12 +1722,14 @@ public:
                 if(gain1 > gain2){
                     moveto[u->getId()] = min;
                     gain[u->getId()][min] = gain1;
-                    heap.push(std::make_pair(u, gain[u->getId()][min]));
+                    //heap.push(std::make_pair(u, gain[u->getId()][min]));
+                    UpdateHeap(heap, std::make_pair(u, gain[u->getId()][min]));
                 }
                 else{
                     moveto[u->getId()] = max;
                     gain[u->getId()][max] = gain2;
-                    heap.push(std::make_pair(u, gain[u->getId()][max]));
+                    //heap.push(std::make_pair(u, gain[u->getId()][max]));
+                    UpdateHeap(heap, std::make_pair(u, gain[u->getId()][max]));
                 }
             }
         };
@@ -1740,18 +1759,14 @@ public:
             QG = getPartitionGraph();
         };
 
-        auto ComputeEdgeCut = []() -> int {
-            return 0;// TODO
-        };
-
         {// Acyclic kway refinement
             std::vector<std::vector<int>> gain(getNbNodes());
 
             std::vector<int> copy = part;
             std::vector<bool> moved(getNbNodes(), false);
-            std::vector<int> moves(getNbNodes(), -1);
+            std::vector<int> moves;
 
-            int ec = ComputeEdgeCut();
+            int ec = ComputeEdgeCut(part);
             int ecmin = ec;
 
             Graph QG = BuildQuotientGraph(part);
@@ -1781,7 +1796,7 @@ public:
                 Node* u = heap.top().first;
                 heap.pop();
 
-                std::vector<std::pair<int,int>> parts;
+                std::vector<std::pair<int,int>> parts(part.size());
                 for(int k = 0 ; k < int(part.size()); ++k){
                     parts[k].first = k;
                     parts[k].second = gain[u->getId()][k];
@@ -1799,8 +1814,9 @@ public:
                     k = parts[i].first;
                 }
 
-                moves[idx] = u->getId();
+                moves.push_back(u->getId());
                 idx += 1;
+                assert(int(moves.size()) == idx);
 
                 part[u->getId()] = k;
                 UpdateQuotientGraph(QG, u, k, part);
@@ -1824,9 +1840,16 @@ public:
                 }
             }
 
-            for(int i = idx- 1 ; i >= ecidx ; --idx){
+            for(int i = idx- 1 ; i >= ecidx ; --i){
                 part[moves[i]] = copy[moves[i]];
             }
+        }
+
+        {
+            for(auto& u : nodes){
+                u->setPartitionId(part[u->getId()]);
+            }
+            return;
         }
     }
 };

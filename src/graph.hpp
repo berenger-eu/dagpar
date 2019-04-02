@@ -1700,83 +1700,83 @@ public:
             }
         };
 
-        auto Update = [&CompGain, &UpdateHeap](auto& heap, std::vector<bool>& moveto, const std::vector<int>& part,
-                                  auto& gain, auto& u){
-            const int k = int(part.size());
+        auto Update = [&CompGain, &UpdateHeap](auto& _heap, std::vector<bool>& moveto, const std::vector<int>& _part,
+                                  auto& _gain, auto& _u){
+            const int _k = int(_part.size());
             int max = std::numeric_limits<int>::min();
             int min = std::numeric_limits<int>::max();
 
-            if(u->getPredecessors().size() == 0){
-                max = std::max(part[u->getId()]-1, 1);
+            if(_u->getPredecessors().size() == 0){
+                max = std::max(_part[_u->getId()]-1, 1);
             }
             else{
-                for(auto& v : u->getPredecessors()){
-                    max = std::max(part[v->getId()], max);
+                for(auto& _v : _u->getPredecessors()){
+                    max = std::max(_part[_v->getId()], max);
                 }
             }
 
-            if(u->getSuccessors().size() == 0){
-                min = std::min(part[u->getId()]+1, k);
+            if(_u->getSuccessors().size() == 0){
+                min = std::min(_part[_u->getId()]+1, _k);
             }
             else{
-                for(auto& v : u->getPredecessors()){
-                    min = std::min(part[v->getId()], min);
+                for(auto& _v : _u->getPredecessors()){
+                    min = std::min(_part[_v->getId()], min);
                 }
             }
 
-            if( max != part[u->getId()] && min == part[u->getId()]){
-                moveto[u->getId()] = max;
-                gain[u->getId()][max] = CompGain(u, part, max);
-                //heap.push(std::make_pair(u, gain[u->getId()][max]));
-                UpdateHeap(heap, std::make_pair(u, gain[u->getId()][max]));
+            if( max != _part[_u->getId()] && min == _part[_u->getId()]){
+                moveto[_u->getId()] = max;
+                _gain[_u->getId()][max] = CompGain(_u, _part, max);
+                //_heap.push(std::make_pair(_u, _gain[_u->getId()][max]));
+                UpdateHeap(_heap, std::make_pair(_u, _gain[_u->getId()][max]));
             }
-            else if( min != part[u->getId()] && max == part[u->getId()]){
-                moveto[u->getId()] = min;
-                gain[u->getId()][min] = CompGain(u, part, min);
-                //heap.push(std::make_pair(u, gain[u->getId()][min]));
-                UpdateHeap(heap, std::make_pair(u, gain[u->getId()][min]));
+            else if( min != _part[_u->getId()] && max == _part[_u->getId()]){
+                moveto[_u->getId()] = min;
+                _gain[_u->getId()][min] = CompGain(_u, _part, min);
+                //_heap.push(std::make_pair(_u, _gain[_u->getId()][min]));
+                UpdateHeap(_heap, std::make_pair(_u, _gain[_u->getId()][min]));
             }
-            else if( min != part[u->getId()] && max != part[u->getId()]){
-                const int gain1 = CompGain(u, part, min);
-                const int gain2 = CompGain(u, part, max);
+            else if( min != _part[_u->getId()] && max != _part[_u->getId()]){
+                const int gain1 = CompGain(_u, _part, min);
+                const int gain2 = CompGain(_u, _part, max);
                 if(gain1 > gain2){
-                    moveto[u->getId()] = min;
-                    gain[u->getId()][min] = gain1;
-                    //heap.push(std::make_pair(u, gain[u->getId()][min]));
-                    UpdateHeap(heap, std::make_pair(u, gain[u->getId()][min]));
+                    moveto[_u->getId()] = min;
+                    _gain[_u->getId()][min] = gain1;
+                    //_heap.push(std::make_pair(_u, _gain[_u->getId()][min]));
+                    UpdateHeap(_heap, std::make_pair(_u, _gain[_u->getId()][min]));
                 }
                 else{
-                    moveto[u->getId()] = max;
-                    gain[u->getId()][max] = gain2;
-                    //heap.push(std::make_pair(u, gain[u->getId()][max]));
-                    UpdateHeap(heap, std::make_pair(u, gain[u->getId()][max]));
+                    moveto[_u->getId()] = max;
+                    _gain[_u->getId()][max] = gain2;
+                    //_heap.push(std::make_pair(_u, _gain[_u->getId()][max]));
+                    UpdateHeap(_heap, std::make_pair(_u, _gain[_u->getId()][max]));
                 }
             }
         };
 
-        auto BuildQuotientGraph = [this](const std::vector<int>& part) -> Graph {
-            for(auto& u : nodes){
-                u->setPartitionId(part[u->getId()]);
+        auto BuildQuotientGraph = [this](const std::vector<int>& _part) -> Graph {
+            for(auto& _u : nodes){
+                _u->setPartitionId(_part[_u->getId()]);
             }
             return getPartitionGraph();
         };
 
-        auto CreateCycle = [this](auto& QG, auto& u, int k, const std::vector<int>& part) -> bool {
-            for(auto& v : nodes){
-                v->setPartitionId(part[v->getId()]);
+        auto CreateCycle = [this](auto& /*QG*/, auto& _u, int _k, const std::vector<int>& _part) -> bool {
+            for(auto& _v : nodes){
+                _v->setPartitionId(_part[_v->getId()]);
             }
-            u->setPartitionId(k);
+            _u->setPartitionId(_k);
 
             return isPartitionGraphDag() == false;
         };
 
-        auto UpdateQuotientGraph = [this](auto& QG, auto& u, int k, const std::vector<int>& part){
-            for(auto& v : nodes){
-                v->setPartitionId(part[v->getId()]);
+        auto UpdateQuotientGraph = [this](auto& _QG, auto& _u, int _k, const std::vector<int>& _part){
+            for(auto& _v : nodes){
+                _v->setPartitionId(_part[_v->getId()]);
             }
-            u->setPartitionId(k);
+            _u->setPartitionId(_k);
 
-            QG = getPartitionGraph();
+            _QG = getPartitionGraph();
         };
 
         {// Acyclic kway refinement

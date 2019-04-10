@@ -198,7 +198,10 @@ class TestAll : public UTester< TestAll > {
                                          },
                                         [](Graph& graph, const int clusterSize){
                                             graph.partitionTemporalPart(clusterSize);
-                                         }
+                                         },
+                                            [](Graph& graph, const int clusterSize){
+                                                graph.partitionFinal(clusterSize, 1, 1, false);
+                                             }
                                         };
 
         for(const int testSize : testSizes){

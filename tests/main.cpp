@@ -117,6 +117,9 @@ int main(int argc, char** argv){
                                      }},
                                     {"temporal", [](Graph& graph, const int clusterSize){
                                         graph.partitionTemporalPart(clusterSize);
+                                     }},
+                                    {"final", [](Graph& graph, const int clusterSize){
+                                        graph.partitionFinal(clusterSize, 1, 1, true);
                                      }}
 #ifdef USE_ACYCLIC
                                     ,

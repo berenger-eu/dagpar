@@ -1976,8 +1976,10 @@ public:
 
             std::sort(nodeRelations.begin(), nodeRelations.end(),
                     [](const std::tuple<Node*,int,int>& n1, const std::tuple<Node*,int,int>& n2){
-                return std::get<2>(n1) > std::get<2>(n2)
-                        || (std::get<2>(n1) == std::get<2>(n2) && std::get<1>(n1) > std::get<1>(n2));
+//                return std::get<2>(n1) > std::get<2>(n2)
+//                        || (std::get<2>(n1) == std::get<2>(n2) && std::get<1>(n1) > std::get<1>(n2));
+                return std::get<1>(n1) > std::get<1>(n2)
+                        || (std::get<1>(n1) == std::get<1>(n2) && std::get<2>(n1) < std::get<2>(n2));
             });
 
 

@@ -119,6 +119,9 @@ int main(int argc, char** argv){
                                         graph.partitionTemporalPart(clusterSize);
                                      }},
                                     {"final", [](Graph& graph, const int clusterSize){
+                                        graph.partitionFinal(clusterSize, 1, 1, false);
+                                     }},
+                                    {"final-with-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinal(clusterSize, 1, 1, true);
                                      }}
 #ifdef USE_ACYCLIC
@@ -131,6 +134,7 @@ int main(int argc, char** argv){
 
 
     for(const auto& method : allPartitionMethods){
+        std::cout << "=======================[" << method.first <<  "]======================================\n";
         Graph aGraph(someDeps.first, someDeps.second);
         std::cout << "Number of nodes : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
@@ -144,7 +148,7 @@ int main(int argc, char** argv){
         Graph depGraph = aGraph.getPartitionGraph();
         assert(depGraph.isDag());
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after random partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << "Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
         std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
         depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
@@ -154,6 +158,7 @@ int main(int argc, char** argv){
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
+        std::cout << "=============================================================\n";
     }
 #ifdef USE_METIS
     {

@@ -1950,6 +1950,7 @@ public:
         struct InfoPartition{
             int nbNnodesInPartition;
             int startingLevel;
+            int limiteLevel;
             std::set<int> idsParentPartitionsSuccessors;
             std::set<int> idsParentPartitionsPredecessors;
             std::set<Node*> idsNodes;
@@ -1999,6 +2000,7 @@ public:
 
                     proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                     proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                    proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
                     proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                     proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                 }
@@ -2011,6 +2013,7 @@ public:
                             && uniqueParentPartitionInfo.nbNnodesInPartition < maxSize){
                         selectedNode->setPartitionId(uniqueParentPartitionId);
                         proceedPartitionsInfo[uniqueParentPartitionId].nbNnodesInPartition += 1;
+                        proceedPartitionsInfo[uniqueParentPartitionId].limiteLevel = selectedNodeDistFromTop + 1;
                         proceedPartitionsInfo[uniqueParentPartitionId].idsNodes.insert(selectedNode);
                     }
                     else{
@@ -2019,6 +2022,7 @@ public:
 
                         proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                         proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                        proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
                         proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                         proceedPartitionsInfo.back().idsParentPartitionsPredecessors.insert(uniqueParentPartitionId);
                         proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
@@ -2029,7 +2033,7 @@ public:
                     std::vector<std::tuple<int,int,int>> possibleCurrentPartitionsWithDistAndNb;
                     for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
                         const auto& parentPartitionInfo = proceedPartitionsInfo[parentPartitionId];
-                        if(selectedNodeDistFromTop <= parentPartitionInfo.startingLevel + inPhase1Height + inPhase2Height
+                        if(selectedNodeDistFromTop <= parentPartitionInfo.startingLevel + inPhase1Height
                                 && parentPartitionInfo.nbNnodesInPartition < maxSize){
                             possibleCurrentPartitionsWithDistAndNb.emplace_back(parentPartitionId,
                                                                                 parentPartitionInfo.startingLevel,
@@ -2075,6 +2079,7 @@ public:
                         if(testPartitionIdIsLinkedToAParent == false){
                             selectedNode->setPartitionId(testPartitionId);
                             proceedPartitionsInfo[testPartitionId].nbNnodesInPartition += 1;
+                            proceedPartitionsInfo[testPartitionId].limiteLevel = selectedNodeDistFromTop + 1;
                             proceedPartitionsInfo[testPartitionId].idsNodes.insert(selectedNode);
 
                             selectedNodeParentPartitionIds.erase(testPartitionId);
@@ -2096,6 +2101,7 @@ public:
 
                         proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                         proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
+                        proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
                         proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                         proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                         proceedPartitionsInfo.back().idsParentPartitionsPredecessors = selectedNodeParentPartitionIds;
@@ -2167,26 +2173,105 @@ public:
                         for(int idxPotential = 0 ; idxPotential < int(potentialPerParts.size()) ; ++idxPotential){
                             const int idxOtherPart = potentialPerParts[idxPotential].first;
 
-                            part.nbNnodesInPartition += proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition;
-                            part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[idxOtherPart].startingLevel);
-                            part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.begin(),
-                                                                      proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.end());
-                            part.idsParentPartitionsPredecessors.insert(proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.begin(),
-                                                                        proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.end());
-                            part.idsNodes.insert(proceedPartitionsInfo[idxOtherPart].idsNodes.begin(),
-                                                 proceedPartitionsInfo[idxOtherPart].idsNodes.end());
+                            bool testPartitionIdIsLinkedToAParent = false;
 
-                            for(Node* otherNode : proceedPartitionsInfo[idxOtherPart].idsNodes){
-                                otherNode->setPartitionId(idxPart);
+                            {
+                                std::set<int> alreadyProceed;
+                                std::deque<int> children;
+                                for(const auto& idxChild : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors){
+                                    if(idxChild != idxPart
+                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        children.push_back(idxChild);
+                                        alreadyProceed.insert(idxChild);
+                                    }
+                                }
+
+                                while(testPartitionIdIsLinkedToAParent == false && children.size()){
+                                    const int testPartitionIter = children.front();
+                                    children.pop_front();
+
+                                    for(const auto& idxChild : proceedPartitionsInfo[testPartitionIter].idsParentPartitionsSuccessors){
+                                        if(idxChild == idxPart){
+                                            testPartitionIdIsLinkedToAParent = true;
+                                            break;
+                                        }
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel
+                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                            children.push_back(idxChild);
+                                        }
+                                    }
+                                }
+                            }
+                            {
+                                std::set<int> alreadyProceed;
+                                std::deque<int> children;
+                                for(const auto& idxChild : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
+                                    if(idxChild != idxOtherPart
+                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        children.push_back(idxChild);
+                                        alreadyProceed.insert(idxChild);
+                                    }
+                                }
+
+                                while(testPartitionIdIsLinkedToAParent == false && children.size()){
+                                    const int testPartitionIter = children.front();
+                                    children.pop_front();
+
+                                    for(const auto& idxChild : proceedPartitionsInfo[testPartitionIter].idsParentPartitionsSuccessors){
+                                        if(idxChild == idxOtherPart){
+                                            testPartitionIdIsLinkedToAParent = true;
+                                            break;
+                                        }
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxOtherPart].limiteLevel
+                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                            children.push_back(idxChild);
+                                        }
+                                    }
+                                }
                             }
 
-                            proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition = 0;
-                            proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.clear();
-                            proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.clear();
-                            proceedPartitionsInfo[idxOtherPart].idsNodes.clear();
 
-                            hasChanged = true;
-                            break;
+                            if(testPartitionIdIsLinkedToAParent == false){
+                                for(auto idxNext : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors){
+                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
+                                }
+                                for(auto idxNext : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
+                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxOtherPart);
+                                }
+                                for(auto idxPrev : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors){
+                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
+                                }
+                                for(auto idxPrev : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
+                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxOtherPart);
+                                }
+
+
+                                part.nbNnodesInPartition += proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition;
+                                part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[idxOtherPart].startingLevel);
+                                part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[idxOtherPart].limiteLevel);
+                                part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.begin(),
+                                                                          proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.end());
+                                part.idsParentPartitionsSuccessors.erase(idxPart);
+                                part.idsParentPartitionsSuccessors.erase(idxOtherPart);
+                                part.idsParentPartitionsPredecessors.insert(proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.begin(),
+                                                                            proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.end());
+                                part.idsParentPartitionsPredecessors.erase(idxPart);
+                                part.idsParentPartitionsPredecessors.erase(idxOtherPart);
+                                part.idsNodes.insert(proceedPartitionsInfo[idxOtherPart].idsNodes.begin(),
+                                                     proceedPartitionsInfo[idxOtherPart].idsNodes.end());
+
+                                for(Node* otherNode : proceedPartitionsInfo[idxOtherPart].idsNodes){
+                                    otherNode->setPartitionId(idxPart);
+                                }
+
+                                proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition = 0;
+                                proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.clear();
+                                proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.clear();
+                                proceedPartitionsInfo[idxOtherPart].idsNodes.clear();
+
+                                hasChanged = true;
+                                break;
+                            }
                         }
                     }
                 }

@@ -92,7 +92,7 @@ class TestAll : public UTester< TestAll > {
 
         {
             int nbDepsInGraph = 0;
-            int totalCost = 0;
+            double totalCost = 0;
             for(int idxNode = 0 ; idxNode < depGraph.getNbNodes() ; ++idxNode){
                 const auto& node = depGraph.getNodeFromId(idxNode);
                 UASSERTETRUE(node->getId() == idxNode);
@@ -111,7 +111,7 @@ class TestAll : public UTester< TestAll > {
                 }
             }
 
-            UASSERTETRUE(totalCost == aGraph.getNbNodes());
+            UASSERTETRUE(std::abs(totalCost - aGraph.getNbNodes())/totalCost < 1E-14);
         }
         {
             std::unordered_map<int,int> costPerPartition;

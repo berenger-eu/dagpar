@@ -17,7 +17,7 @@ class Node{
 
     int id;
     int partitionId;
-    int cost;
+    double cost;
 
 public:
     explicit Node(const int inId, const int inPartitionId = 0)
@@ -28,7 +28,7 @@ public:
         partitionId = inPartitionId;
     }
 
-    void setCost(const int inCost){
+    void setCost(const double inCost){
         cost = inCost;
     }
 
@@ -40,7 +40,7 @@ public:
         return partitionId;
     }
 
-    int getCost() const{
+    double getCost() const{
         return cost;
     }
 

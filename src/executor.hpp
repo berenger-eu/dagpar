@@ -27,24 +27,24 @@ public:
     class Event{
         int workerId;
         int nodeId;
-        int cost;
-        int startingPoint;
-        int readyPoint;
+        double cost;
+        double startingPoint;
+        double readyPoint;
 
     public:
         Event(){}
 
-        void init(const int inNodeId, const int inCost){
+        void init(const int inNodeId, const double inCost){
             nodeId = inNodeId;
             cost = inCost;
         }
 
-        void startTask(const int inWorkerId, const int inStartingPoint){
+        void startTask(const int inWorkerId, const double inStartingPoint){
             workerId = inWorkerId;
             startingPoint = inStartingPoint;
         }
 
-        void becomeReady(const int inReadyPoint){
+        void becomeReady(const double inReadyPoint){
             readyPoint = inReadyPoint;
         }
 
@@ -58,23 +58,23 @@ public:
             return nodeId;
         }
 
-        int getDuration() const{
+        double getDuration() const{
             return cost;
         }
 
-        int getStartingTime() const{
+        double getStartingTime() const{
             return startingPoint;
         }
 
-        int getReadyTime() const{
+        double getReadyTime() const{
             return readyPoint;
         }
 
-        int getEndingTime() const{
+        double getEndingTime() const{
             return getDuration() + getStartingTime();
         }
 
-        int getCreationTime() const{
+        double getCreationTime() const{
             return 0;
         }
 
@@ -83,13 +83,13 @@ public:
         }
     };
 
-    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers, const int overheadPerTask = 0){
+    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers, const double overheadPerTask = 0){
         if(inGraph.getNbNodes() == 0){
             return std::make_tuple(0,std::vector<Event>());
         }
 
         struct Worker{
-            int scheduledAvailable;
+            double scheduledAvailable;
             int currentTaskId;
             int currentWorkerId;
             bool operator<(const Worker& other) const{
@@ -124,7 +124,7 @@ public:
         std::vector<int> countPredecessorsOver(inGraph.getNbNodes(), 0);
         std::priority_queue<Worker> workers;
         int nbComputedTask = 0;
-        int currentTime = 0;
+        double currentTime = 0;
 
         while(readyTasks.size() && idleWorkerCount.size()){
             const int readyTaskId = readyTasks.back();
@@ -209,7 +209,7 @@ public:
 
 
     static void EventsToTrace(const std::string& outputFilename, const std::vector<Event>& tasksFinished, const int nbWorkers) {
-        using time_type = int;
+        using time_type = double;
         const int startingTime = 0;
 
         std::ofstream svgfile(outputFilename);

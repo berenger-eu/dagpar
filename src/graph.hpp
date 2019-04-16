@@ -171,7 +171,7 @@ public:
     Graph(const int inNodes,
           const std::vector<std::pair<int,int>>& inDependencyList,
           const std::vector<int>& inPartitionPerNode,
-          const std::vector<int>& inCostPerNode) : Graph(inNodes, inDependencyList){
+          const std::vector<double>& inCostPerNode) : Graph(inNodes, inDependencyList){
         assert(nodes.size() == inPartitionPerNode.size());
         assert(nodes.size() == inCostPerNode.size());
 
@@ -1306,7 +1306,7 @@ public:
 
     Graph getPartitionGraph() const{
         std::vector<std::pair<int,int>> dependencyBetweenPartitions;
-        std::vector<int> partitionCosts;
+        std::vector<double> partitionCosts;
 
         for(const auto& node : nodes){
             for(const auto& otherNode : node->getSuccessors()){

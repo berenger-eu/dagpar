@@ -123,6 +123,9 @@ int main(int argc, char** argv){
                                      }},
                                     {"final-with-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinal(clusterSize, 5, 1, true);
+                                     }},
+                                    {"emulated", [nbThreads](Graph& graph, const int /*clusterSize*/){
+                                        graph.partitionEmulated(20, nbThreads);
                                      }}
 #ifdef USE_ACYCLIC
                                     ,

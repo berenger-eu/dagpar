@@ -2126,6 +2126,12 @@ public:
 
                         for(const Node* selectedNode : part.idsNodes){
                             for(const auto& otherNode : selectedNode->getSuccessors()){
+
+                                if(otherNode->getPartitionId() != idxPart // TODO
+                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                    possibleOtherParts.insert(otherNode->getPartitionId());
+                                }
+
                                 for(const auto& otherOtherNode : otherNode->getPredecessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
                                             && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
@@ -2135,6 +2141,12 @@ public:
                             }
 
                             for(const auto& otherNode : selectedNode->getPredecessors()){
+
+                                if(otherNode->getPartitionId() != idxPart // TODO
+                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                    possibleOtherParts.insert(otherNode->getPartitionId());
+                                }
+
                                 for(const auto& otherOtherNode : otherNode->getSuccessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
                                             && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){

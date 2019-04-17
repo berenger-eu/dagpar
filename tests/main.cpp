@@ -119,7 +119,7 @@ int main(int argc, char** argv){
                                         graph.partitionTemporalPart(clusterSize);
                                      }},
                                     {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 1, 1, false);
+                                        graph.partitionFinal(clusterSize, 5, 1, false);
                                      }},
                                     {"final-with-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinal(clusterSize, 5, 1, true);

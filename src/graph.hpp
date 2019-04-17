@@ -1945,7 +1945,6 @@ public:
         }
 
         struct InfoPartition{
-            int nbNnodesInPartition;
             int startingLevel;
             int limiteLevel;
             std::set<int> idsParentPartitionsSuccessors;
@@ -1998,7 +1997,6 @@ public:
                     proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                     proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                     proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
-                    proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                     proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                 }
                 else if(selectedNodeParentPartitionIds.size() == 1){
@@ -2007,9 +2005,8 @@ public:
                     const auto& uniqueParentPartitionInfo = proceedPartitionsInfo[uniqueParentPartitionId];
 
                     if(selectedNodeDistFromTop <= uniqueParentPartitionInfo.startingLevel + inPhase1Height + inPhase2Height
-                            && uniqueParentPartitionInfo.nbNnodesInPartition < maxSize){
+                            && int(uniqueParentPartitionInfo.idsNodes.size()) < maxSize){
                         selectedNode->setPartitionId(uniqueParentPartitionId);
-                        proceedPartitionsInfo[uniqueParentPartitionId].nbNnodesInPartition += 1;
                         proceedPartitionsInfo[uniqueParentPartitionId].limiteLevel = selectedNodeDistFromTop + 1;
                         proceedPartitionsInfo[uniqueParentPartitionId].idsNodes.insert(selectedNode);
                     }
@@ -2020,7 +2017,6 @@ public:
                         proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                         proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                         proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
-                        proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                         proceedPartitionsInfo.back().idsParentPartitionsPredecessors.insert(uniqueParentPartitionId);
                         proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                         proceedPartitionsInfo[uniqueParentPartitionId].idsParentPartitionsSuccessors.insert(currentPartitionId);
@@ -2031,10 +2027,10 @@ public:
                     for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
                         const auto& parentPartitionInfo = proceedPartitionsInfo[parentPartitionId];
                         if(selectedNodeDistFromTop <= parentPartitionInfo.startingLevel + inPhase1Height
-                                && parentPartitionInfo.nbNnodesInPartition < maxSize){
+                                && int(parentPartitionInfo.idsNodes.size()) < maxSize){
                             possibleCurrentPartitionsWithDistAndNb.emplace_back(parentPartitionId,
                                                                                 parentPartitionInfo.startingLevel,
-                                                                                parentPartitionInfo.nbNnodesInPartition);
+                                                                                int(parentPartitionInfo.idsNodes.size()));
                         }
                     }
 
@@ -2075,7 +2071,6 @@ public:
 
                         if(testPartitionIdIsLinkedToAParent == false){
                             selectedNode->setPartitionId(testPartitionId);
-                            proceedPartitionsInfo[testPartitionId].nbNnodesInPartition += 1;
                             proceedPartitionsInfo[testPartitionId].limiteLevel = selectedNodeDistFromTop + 1;
                             proceedPartitionsInfo[testPartitionId].idsNodes.insert(selectedNode);
 
@@ -2099,7 +2094,6 @@ public:
                         proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                         proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                         proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
-                        proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                         proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                         proceedPartitionsInfo.back().idsParentPartitionsPredecessors = selectedNodeParentPartitionIds;
 
@@ -2118,20 +2112,20 @@ public:
 
                 for(int idxPart = 0 ; idxPart < int(proceedPartitionsInfo.size()) ; ++idxPart){
                     auto& part = proceedPartitionsInfo[idxPart];
-                    if(part.nbNnodesInPartition && part.nbNnodesInPartition < maxSize){
+                    if(part.idsNodes.size() && int(part.idsNodes.size()) < maxSize){
                         std::set<int> possibleOtherParts;
 
                         for(const Node* selectedNode : part.idsNodes){
                             for(const auto& otherNode : selectedNode->getSuccessors()){
 
                                 if(otherNode->getPartitionId() != idxPart // TODO
-                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                        && int(proceedPartitionsInfo[otherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                     possibleOtherParts.insert(otherNode->getPartitionId());
                                 }
 
                                 for(const auto& otherOtherNode : otherNode->getPredecessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
-                                            && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                            && int(proceedPartitionsInfo[otherOtherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                         possibleOtherParts.insert(otherOtherNode->getPartitionId());
                                     }
                                 }
@@ -2140,13 +2134,13 @@ public:
                             for(const auto& otherNode : selectedNode->getPredecessors()){
 
                                 if(otherNode->getPartitionId() != idxPart // TODO
-                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                        && int(proceedPartitionsInfo[otherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                     possibleOtherParts.insert(otherNode->getPartitionId());
                                 }
 
                                 for(const auto& otherOtherNode : otherNode->getSuccessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
-                                            && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                            && int(proceedPartitionsInfo[otherOtherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                         possibleOtherParts.insert(otherOtherNode->getPartitionId());
                                     }
                                 }
@@ -2243,19 +2237,20 @@ public:
                             if(testPartitionIdIsLinkedToAParent == false){
                                 for(auto idxNext : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors){
                                     proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
+                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(idxOtherPart);
                                 }
-                                for(auto idxNext : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxOtherPart);
-                                }
+//                                for(auto idxNext : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
+//                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxOtherPart);
+//                                }
                                 for(auto idxPrev : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors){
                                     proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
+                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(idxOtherPart);
                                 }
-                                for(auto idxPrev : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
-                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxOtherPart);
-                                }
+//                                for(auto idxPrev : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
+//                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxOtherPart);
+//                                }
 
 
-                                part.nbNnodesInPartition += proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition;
                                 part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[idxOtherPart].startingLevel);
                                 part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[idxOtherPart].limiteLevel);
                                 part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.begin(),
@@ -2273,7 +2268,6 @@ public:
                                     otherNode->setPartitionId(idxPart);
                                 }
 
-                                proceedPartitionsInfo[idxOtherPart].nbNnodesInPartition = 0;
                                 proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors.clear();
                                 proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors.clear();
                                 proceedPartitionsInfo[idxOtherPart].idsNodes.clear();
@@ -2299,7 +2293,7 @@ public:
 
         if(true){
             auto ExecPartions = [](const std::vector<InfoPartition>& partitions, const double overheadPerTask,
-                    const int nbWorkers) -> double {
+                    const int nbWorkers, const int nbNodes) -> double {
                  struct Worker{
                      double scheduledAvailable;
 
@@ -2319,7 +2313,7 @@ public:
                  std::vector<int> readyPartitions;
 
                  for(int idxPartition = 0 ; idxPartition < int(partitions.size()) ; ++idxPartition){
-                     if(partitions[idxPartition].nbNnodesInPartition && partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
+                     if(partitions[idxPartition].idsNodes.size() && partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
                          readyPartitions.emplace_back(idxPartition);
                      }
                  }
@@ -2348,14 +2342,14 @@ public:
                               workerId};
                      workers.push(wk);
 
-                     nbComputedTask += 1;
+                     nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
                  }
 
                  assert(workers.size() != 0);
 
                  std::vector<int> countPredecessorsOverPartitions(partitions.size(), 0);
 
-                 while(nbComputedTask != int(partitions.size())){
+                 while(nbComputedTask != nbNodes){
                      {
                          assert(workers.size());
                          Worker worker = workers.top();
@@ -2388,7 +2382,7 @@ public:
                          double totalDuration = 0;
                          for(const auto& node : partitions[readyPartitionId].idsNodes){
                              totalDuration += node->getCost();
-                             assert(node->getPartitionId() == readyPartitionId);
+                             // Not true anymore since node has not been updated: assert(node->getPartitionId() == readyPartitionId);
                          }
 
                          Worker wk{currentTime + totalDuration + overheadPerTask,
@@ -2396,7 +2390,7 @@ public:
                                   workerId};
                          workers.push(wk);
 
-                         nbComputedTask += 1;
+                         nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
                      }
 
                      assert(workers.size() != 0);
@@ -2420,7 +2414,7 @@ public:
             const int inOverheadPerTask = 4;
             const int inNbWorkers = 10;
 
-            double currentExecutionTime = ExecPartions(proceedPartitionsInfo, inOverheadPerTask, inNbWorkers);
+            double currentExecutionTime = ExecPartions(proceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()));
 
             bool hasChanged = true;
             while(hasChanged){
@@ -2428,20 +2422,20 @@ public:
 
                 for(int idxPart = 0 ; idxPart < int(proceedPartitionsInfo.size()) ; ++idxPart){
                     auto& part = proceedPartitionsInfo[idxPart];
-                    if(part.nbNnodesInPartition && part.nbNnodesInPartition < maxSize){
+                    if(part.idsNodes.size() && int(part.idsNodes.size()) < maxSize){
                         std::set<int> possibleOtherParts;
 
                         for(const Node* selectedNode : part.idsNodes){
                             for(const auto& otherNode : selectedNode->getSuccessors()){
 
                                 if(otherNode->getPartitionId() != idxPart // TODO
-                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                        && int(proceedPartitionsInfo[otherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                     possibleOtherParts.insert(otherNode->getPartitionId());
                                 }
 
                                 for(const auto& otherOtherNode : otherNode->getPredecessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
-                                            && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                            && int(proceedPartitionsInfo[otherOtherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                         possibleOtherParts.insert(otherOtherNode->getPartitionId());
                                     }
                                 }
@@ -2450,13 +2444,13 @@ public:
                             for(const auto& otherNode : selectedNode->getPredecessors()){
 
                                 if(otherNode->getPartitionId() != idxPart // TODO
-                                        && proceedPartitionsInfo[otherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                        && int(proceedPartitionsInfo[otherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                     possibleOtherParts.insert(otherNode->getPartitionId());
                                 }
 
                                 for(const auto& otherOtherNode : otherNode->getSuccessors()){
                                     if(otherOtherNode->getPartitionId() != idxPart
-                                            && proceedPartitionsInfo[otherOtherNode->getPartitionId()].nbNnodesInPartition + part.nbNnodesInPartition <= maxSize*2){
+                                            && int(proceedPartitionsInfo[otherOtherNode->getPartitionId()].idsNodes.size() + part.idsNodes.size()) <= maxSize*2){
                                         possibleOtherParts.insert(otherOtherNode->getPartitionId());
                                     }
                                 }
@@ -2544,7 +2538,6 @@ public:
 
                                 auto& copyPart = copyProceedPartitionsInfo[idxPart];
 
-                                copyPart.nbNnodesInPartition += copyProceedPartitionsInfo[parentPartitionId].nbNnodesInPartition;
                                 copyPart.startingLevel = std::min(copyPart.startingLevel, copyProceedPartitionsInfo[parentPartitionId].startingLevel);
                                 copyPart.limiteLevel = std::max(copyPart.limiteLevel, copyProceedPartitionsInfo[parentPartitionId].limiteLevel);
                                 copyPart.idsParentPartitionsSuccessors.insert(copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.begin(),
@@ -2558,13 +2551,12 @@ public:
                                 copyPart.idsNodes.insert(copyProceedPartitionsInfo[parentPartitionId].idsNodes.begin(),
                                                      copyProceedPartitionsInfo[parentPartitionId].idsNodes.end());
 
-                                copyProceedPartitionsInfo[parentPartitionId].nbNnodesInPartition = 0;
                                 copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.clear();
                                 copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors.clear();
                                 copyProceedPartitionsInfo[parentPartitionId].idsNodes.clear();
 
 
-                                double testExecutionTime = ExecPartions(copyProceedPartitionsInfo, inOverheadPerTask, inNbWorkers);
+                                double testExecutionTime = ExecPartions(copyProceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()));
 
                                 if(testExecutionTime < bestExecTime){
                                     bestPartitionId = parentPartitionId;
@@ -2574,6 +2566,7 @@ public:
                         }
 
                         if(bestPartitionId != -1){
+                            std::cout << "Merge " << idxPart << " and " << bestPartitionId << std::endl;// TODO
                             for(auto idxNext : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors){
                                 proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
                                 proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(bestPartitionId);
@@ -2590,7 +2583,6 @@ public:
 //                            }
 
 
-                            part.nbNnodesInPartition += proceedPartitionsInfo[bestPartitionId].nbNnodesInPartition;
                             part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[bestPartitionId].startingLevel);
                             part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[bestPartitionId].limiteLevel);
                             part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.begin(),
@@ -2608,7 +2600,6 @@ public:
                                 otherNode->setPartitionId(idxPart);
                             }
 
-                            proceedPartitionsInfo[bestPartitionId].nbNnodesInPartition = 0;
                             proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.clear();
                             proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors.clear();
                             proceedPartitionsInfo[bestPartitionId].idsNodes.clear();
@@ -2701,7 +2692,6 @@ public:
         }
 
         struct InfoPartition{
-            int nbNnodesInPartition;
             int startingLevel;
             int limiteLevel;
             std::set<int> idsParentPartitionsSuccessors;
@@ -2743,7 +2733,7 @@ public:
             }
 
             for(int idxPartition = 0 ; idxPartition < int(partitions.size()) ; ++idxPartition){
-                assert(partitions[idxPartition].nbNnodesInPartition);
+                assert(partitions[idxPartition].idsNodes.size());
                 if(partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
                     readyTasksOrPartitions.emplace_back(idxPartition, false);
                 }
@@ -2938,7 +2928,6 @@ public:
                     proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                     proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                     proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
-                    proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                     proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                 }
                 else{
@@ -2947,15 +2936,13 @@ public:
 
                     for(const auto& parentPartitionId : selectedNodeParentPartitionIds){
                         auto& parentPartitionInfo = proceedPartitionsInfo[parentPartitionId];
-                        if(parentPartitionInfo.nbNnodesInPartition < maxSize){
+                        if(int(parentPartitionInfo.idsNodes.size()) < maxSize){
 
-                            parentPartitionInfo.nbNnodesInPartition += 1;
                             parentPartitionInfo.idsNodes.insert(selectedNode);
                             selectedNode->setPartitionId(parentPartitionId);
                             double testExecutionTime = ExecPartions(proceedPartitionsInfo, inOverheadPerTask, inNbWorkers);
                             parentPartitionInfo.idsNodes.erase(selectedNode);
                             selectedNode->setPartitionId(-1);
-                            parentPartitionInfo.nbNnodesInPartition -= 1;
 
                             if(testExecutionTime < bestExecTime){
                                 bestPartitionId = parentPartitionId;
@@ -2969,7 +2956,6 @@ public:
 
                         currentExecutionTime = bestExecTime;
 
-                        proceedPartitionsInfo[bestPartitionId].nbNnodesInPartition += 1;
                         proceedPartitionsInfo[bestPartitionId].limiteLevel = selectedNodeDistFromTop + 1;
                         proceedPartitionsInfo[bestPartitionId].idsNodes.insert(selectedNode);
 
@@ -2988,7 +2974,6 @@ public:
                         proceedPartitionsInfo.resize(proceedPartitionsInfo.size() + 1);
                         proceedPartitionsInfo.back().startingLevel = selectedNodeDistFromTop;
                         proceedPartitionsInfo.back().limiteLevel = selectedNodeDistFromTop + 1;
-                        proceedPartitionsInfo.back().nbNnodesInPartition = 1;
                         proceedPartitionsInfo.back().idsNodes.insert(selectedNode);
                         proceedPartitionsInfo.back().idsParentPartitionsPredecessors = selectedNodeParentPartitionIds;
 

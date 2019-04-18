@@ -2278,6 +2278,9 @@ public:
         if(true){
             auto ExecPartions = [](const std::vector<InfoPartition>& partitions, const double overheadPerTask,
                     const int nbWorkers, const int nbNodes) -> double {
+                const double popOverhead = 0;
+                const double pushOverhead = 0;
+
                  struct Worker{
                      double scheduledAvailable;
 
@@ -2295,9 +2298,11 @@ public:
                  std::iota(idleWorkerCount.begin(), idleWorkerCount.end(), 0);
 
                  std::vector<int> readyPartitions;
+                 double currentTime = 0;
 
                  for(int idxPartition = 0 ; idxPartition < int(partitions.size()) ; ++idxPartition){
                      if(partitions[idxPartition].idsNodes.size() && partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
+                         currentTime += pushOverhead;
                          readyPartitions.emplace_back(idxPartition);
                      }
                  }
@@ -2306,7 +2311,6 @@ public:
 
                  std::priority_queue<Worker> workers;
                  int nbComputedTask = 0;
-                 double currentTime = 0;
 
                  while(readyPartitions.size() && idleWorkerCount.size()){
                      const int readyPartitionId = readyPartitions.back();
@@ -2320,6 +2324,8 @@ public:
                          totalDuration += node->getCost();
                          // Not true since we did not update the nodes assert(node->getPartitionId() == readyPartitionId);
                      }
+
+                     currentTime += popOverhead;
 
                      Worker wk{currentTime + totalDuration + overheadPerTask,
                               readyPartitionId,
@@ -2341,14 +2347,14 @@ public:
 
                          const int currentPartitionId = worker.currentPartitionId;
 
-                         assert(currentTime <= worker.scheduledAvailable);
-                         currentTime = worker.scheduledAvailable;
+                         currentTime = std::max(currentTime, worker.scheduledAvailable);
 
                          // release dependencies
                          for(const auto& successorPartition : partitions[currentPartitionId].idsParentPartitionsSuccessors){
                              countPredecessorsOverPartitions[successorPartition] += 1;
                              if(countPredecessorsOverPartitions[successorPartition] == int(partitions[successorPartition].idsParentPartitionsPredecessors.size())){
                                  readyPartitions.emplace_back(successorPartition);
+                                 currentTime+= pushOverhead;
                              }
                          }
 
@@ -2368,6 +2374,8 @@ public:
                              totalDuration += node->getCost();
                              // Not true anymore since node has not been updated: assert(node->getPartitionId() == readyPartitionId);
                          }
+
+                         currentTime += popOverhead;
 
                          Worker wk{currentTime + totalDuration + overheadPerTask,
                                   readyPartitionId,

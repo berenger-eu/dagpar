@@ -30,13 +30,19 @@ public:
         double cost;
         double startingPoint;
         double readyPoint;
+        bool isWork;
 
     public:
         Event(){}
 
-        void init(const int inNodeId, const double inCost){
+        void init(const int inNodeId, const double inCost, const bool inIsWork){
             nodeId = inNodeId;
             cost = inCost;
+            isWork = inIsWork;
+        }
+
+        bool getIsWork() const{
+            return isWork;
         }
 
         void startTask(const int inWorkerId, const double inStartingPoint){
@@ -83,7 +89,10 @@ public:
         }
     };
 
-    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers, const double overheadPerTask = 0){
+    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers,
+                                                      const double overheadPerTask = 0,
+                                                      const double popOverhead = 0,
+                                                      const double pushOverhead = 0){
         if(inGraph.getNbNodes() == 0){
             return std::make_tuple(0,std::vector<Event>());
         }
@@ -102,19 +111,34 @@ public:
         idleWorkerCount.resize(inNbWorkers);
         std::iota(idleWorkerCount.begin(), idleWorkerCount.end(), 0);
 
-        std::vector<int> readyTasks;
         std::vector<Event> events;
         events.resize(inGraph.getNbNodes());
+
+        std::vector<Event> pushEvents;
+        pushEvents.resize(inGraph.getNbNodes());
+
+        std::vector<Event> popEvents;
+        popEvents.resize(inGraph.getNbNodes());
+
+        std::vector<int> readyTasks;
+
+        double currentTime = 0;
 
         for(int idxNode = 0 ; idxNode < inGraph.getNbNodes() ; ++idxNode){
             const auto& node = inGraph.getNodeFromId(idxNode);
             assert(idxNode == node->getId());
 
-            events[node->getId()].init(node->getId(), node->getCost() + overheadPerTask);
+            events[node->getId()].init(node->getId(), node->getCost() + overheadPerTask, true);
+            pushEvents[node->getId()].init(node->getId(), pushOverhead, false);
+            popEvents[node->getId()].init(node->getId(), popOverhead, false);
 
             if(node->getPredecessors().size() == 0){
+                pushEvents[node->getId()].becomeReady(currentTime);
+                pushEvents[node->getId()].startTask(0, currentTime);
+
+                currentTime+= pushOverhead;
+                events[node->getId()].becomeReady(currentTime);
                 readyTasks.push_back(node->getId());
-                events[node->getId()].becomeReady(0);
             }
         }
 
@@ -124,7 +148,6 @@ public:
         std::vector<int> countPredecessorsOver(inGraph.getNbNodes(), 0);
         std::priority_queue<Worker> workers;
         int nbComputedTask = 0;
-        double currentTime = 0;
 
         while(readyTasks.size() && idleWorkerCount.size()){
             const int readyTaskId = readyTasks.back();
@@ -132,6 +155,11 @@ public:
 
             const int workerId = idleWorkerCount.back();
             idleWorkerCount.pop_back();
+
+            popEvents[readyTaskId].becomeReady(currentTime);
+            popEvents[readyTaskId].startTask(workerId, currentTime);
+
+            currentTime += popOverhead;
 
             Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost() + overheadPerTask,
                      readyTaskId,
@@ -152,13 +180,17 @@ public:
                 workers.pop();
 
                 const int currentTaskId = worker.currentTaskId;
-                assert(currentTime <= worker.scheduledAvailable);
-                currentTime = worker.scheduledAvailable;
+                currentTime = std::max(currentTime, worker.scheduledAvailable);
 
                 // release dependencies
                 for(const auto& successorNode : inGraph.getNodeFromId(currentTaskId)->getSuccessors()){
                     countPredecessorsOver[successorNode->getId()] += 1;
-                    if(countPredecessorsOver[successorNode->getId()] == int(successorNode->getPredecessors().size())){
+                    if(countPredecessorsOver[successorNode->getId()] == int(successorNode->getPredecessors().size())){                        
+                        pushEvents[successorNode->getId()].becomeReady(currentTime);
+                        pushEvents[successorNode->getId()].startTask(worker.currentWorkerId, currentTime);
+
+                        currentTime+= pushOverhead;
+
                         readyTasks.push_back(successorNode->getId());
                         events[successorNode->getId()].becomeReady(currentTime);
                     }
@@ -174,6 +206,11 @@ public:
 
                 const int workerId = idleWorkerCount.back();
                 idleWorkerCount.pop_back();
+
+                popEvents[readyTaskId].becomeReady(currentTime);
+                popEvents[readyTaskId].startTask(workerId, currentTime);
+
+                currentTime += popOverhead;
 
                 Worker wk{currentTime + inGraph.getNodeFromId(readyTaskId)->getCost() + overheadPerTask,
                          readyTaskId,
@@ -194,14 +231,16 @@ public:
             Worker worker = workers.top();
             workers.pop();
 
-            assert(currentTime <= worker.scheduledAvailable);
-            currentTime = worker.scheduledAvailable;
+            currentTime = std::max(currentTime, worker.scheduledAvailable);
 
             assert(inGraph.getNodeFromId(worker.currentTaskId)->getSuccessors().size() == 0);
         }
 
 
         std::cout << "[EXECUTION] Total duration => " << currentTime << std::endl;
+
+        events.insert(events.end(), pushEvents.begin(), pushEvents.end());
+        events.insert(events.end(), popEvents.begin(), popEvents.end());
 
         return std::make_tuple(currentTime, events);
     }
@@ -344,21 +383,23 @@ public:
         std::vector<int> nbSubmited(hdimtime, 0);
 
         for(const auto& atask : tasksFinished){
-            const time_type taskSubmitedTime = atask.getCreationTime() - startingTime;
-            const time_type taskReadyTime = atask.getReadyTime() - startingTime;
-            const time_type taskStartTime = atask.getStartingTime() - startingTime;
-            const long int xpos_submited = static_cast<long  int>(double(hdimtime)*taskSubmitedTime/double(duration));
-            const long int xpos_ready = static_cast<long  int>(double(hdimtime)*taskReadyTime/double(duration));
-            const long int xpos_start = static_cast<long  int>(double(hdimtime)*taskStartTime/double(duration));
+            if(atask.getIsWork()){
+                const time_type taskSubmitedTime = atask.getCreationTime() - startingTime;
+                const time_type taskReadyTime = atask.getReadyTime() - startingTime;
+                const time_type taskStartTime = atask.getStartingTime() - startingTime;
+                const long int xpos_submited = static_cast<long  int>(double(hdimtime)*taskSubmitedTime/double(duration));
+                const long int xpos_ready = static_cast<long  int>(double(hdimtime)*taskReadyTime/double(duration));
+                const long int xpos_start = static_cast<long  int>(double(hdimtime)*taskStartTime/double(duration));
 
-            nbSubmited[xpos_submited] += 1;
+                nbSubmited[xpos_submited] += 1;
 
-            nbReady[xpos_ready] += 1;
-            if(xpos_ready != xpos_start || xpos_ready == hdimtime-1){
-                nbReady[xpos_start] -= 1;
-            }
-            else{
-                nbReady[xpos_start+1] -= 1;
+                nbReady[xpos_ready] += 1;
+                if(xpos_ready != xpos_start || xpos_ready == hdimtime-1){
+                    nbReady[xpos_start] -= 1;
+                }
+                else{
+                    nbReady[xpos_start+1] -= 1;
+                }
             }
         }
 

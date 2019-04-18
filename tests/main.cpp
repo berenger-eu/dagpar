@@ -159,7 +159,7 @@ int main(int argc, char** argv){
 
         int duration;
         std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads);
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, 0, 0.1, 0.2);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";
     }

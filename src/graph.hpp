@@ -2201,6 +2201,7 @@ public:
                                         if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel
                                                 && alreadyProceed.find(idxChild) == alreadyProceed.end()){
                                             children.push_back(idxChild);
+                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
@@ -2228,28 +2229,21 @@ public:
                                         if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxOtherPart].limiteLevel
                                                 && alreadyProceed.find(idxChild) == alreadyProceed.end()){
                                             children.push_back(idxChild);
+                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
                             }
-
 
                             if(testPartitionIdIsLinkedToAParent == false){
                                 for(auto idxNext : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors){
                                     proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
                                     proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(idxOtherPart);
                                 }
-//                                for(auto idxNext : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-//                                    proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxOtherPart);
-//                                }
                                 for(auto idxPrev : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsPredecessors){
                                     proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
                                     proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(idxOtherPart);
                                 }
-//                                for(auto idxPrev : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
-//                                    proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxOtherPart);
-//                                }
-
 
                                 part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[idxOtherPart].startingLevel);
                                 part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[idxOtherPart].limiteLevel);
@@ -2486,6 +2480,7 @@ public:
                                         if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel
                                                 && alreadyProceed.find(idxChild) == alreadyProceed.end()){
                                             children.push_back(idxChild);
+                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
@@ -2513,6 +2508,7 @@ public:
                                         if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[parentPartitionId].limiteLevel
                                                 && alreadyProceed.find(idxChild) == alreadyProceed.end()){
                                             children.push_back(idxChild);
+                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
@@ -2525,16 +2521,10 @@ public:
                                     copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
                                     copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(parentPartitionId);
                                 }
-//                                for(auto idxNext : copyProceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-//                                    copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(parentPartitionId);
-//                                }
                                 for(auto idxPrev : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors){
                                     copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
                                     copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(parentPartitionId);
                                 }
-//                                for(auto idxPrev : copyProceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
-//                                    copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(parentPartitionId);
-//                                }
 
                                 auto& copyPart = copyProceedPartitionsInfo[idxPart];
 
@@ -2566,22 +2556,14 @@ public:
                         }
 
                         if(bestPartitionId != -1){
-                            std::cout << "Merge " << idxPart << " and " << bestPartitionId << std::endl;// TODO
                             for(auto idxNext : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors){
                                 proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
                                 proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(bestPartitionId);
                             }
-//                            for(auto idxNext : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-//                                proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(bestPartitionId);
-//                            }
                             for(auto idxPrev : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
                                 proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
                                 proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(bestPartitionId);
                             }
-//                            for(auto idxPrev : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
-//                                proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(bestPartitionId);
-//                            }
-
 
                             part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[bestPartitionId].startingLevel);
                             part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[bestPartitionId].limiteLevel);

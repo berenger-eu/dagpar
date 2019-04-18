@@ -2179,13 +2179,10 @@ public:
                             bool testPartitionIdIsLinkedToAParent = false;
 
                             {
-                                std::set<int> alreadyProceed;
                                 std::deque<int> children;
                                 for(const auto& idxChild : proceedPartitionsInfo[idxOtherPart].idsParentPartitionsSuccessors){
-                                    if(idxChild != idxPart
-                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                    if(idxChild != idxPart){
                                         children.push_back(idxChild);
-                                        alreadyProceed.insert(idxChild);
                                     }
                                 }
 
@@ -2198,22 +2195,17 @@ public:
                                             testPartitionIdIsLinkedToAParent = true;
                                             break;
                                         }
-                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel
-                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel){
                                             children.push_back(idxChild);
-                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
                             }
                             {
-                                std::set<int> alreadyProceed;
                                 std::deque<int> children;
                                 for(const auto& idxChild : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-                                    if(idxChild != idxOtherPart
-                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                    if(idxChild != idxOtherPart){
                                         children.push_back(idxChild);
-                                        alreadyProceed.insert(idxChild);
                                     }
                                 }
 
@@ -2226,10 +2218,8 @@ public:
                                             testPartitionIdIsLinkedToAParent = true;
                                             break;
                                         }
-                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxOtherPart].limiteLevel
-                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxOtherPart].limiteLevel){
                                             children.push_back(idxChild);
-                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
@@ -2458,13 +2448,10 @@ public:
                             bool testPartitionIdIsLinkedToAParent = false;
 
                             {
-                                std::set<int> alreadyProceed;
                                 std::deque<int> children;
                                 for(const auto& idxChild : proceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors){
-                                    if(idxChild != idxPart
-                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                    if(idxChild != idxPart){
                                         children.push_back(idxChild);
-                                        alreadyProceed.insert(idxChild);
                                     }
                                 }
 
@@ -2477,22 +2464,17 @@ public:
                                             testPartitionIdIsLinkedToAParent = true;
                                             break;
                                         }
-                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel
-                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[idxPart].limiteLevel){
                                             children.push_back(idxChild);
-                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }
                             }
                             {
-                                std::set<int> alreadyProceed;
                                 std::deque<int> children;
                                 for(const auto& idxChild : proceedPartitionsInfo[idxPart].idsParentPartitionsSuccessors){
-                                    if(idxChild != parentPartitionId
-                                            && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                    if(idxChild != parentPartitionId){
                                         children.push_back(idxChild);
-                                        alreadyProceed.insert(idxChild);
                                     }
                                 }
 
@@ -2505,10 +2487,8 @@ public:
                                             testPartitionIdIsLinkedToAParent = true;
                                             break;
                                         }
-                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[parentPartitionId].limiteLevel
-                                                && alreadyProceed.find(idxChild) == alreadyProceed.end()){
+                                        if(proceedPartitionsInfo[idxChild].startingLevel < proceedPartitionsInfo[parentPartitionId].limiteLevel){
                                             children.push_back(idxChild);
-                                            alreadyProceed.insert(idxChild);
                                         }
                                     }
                                 }

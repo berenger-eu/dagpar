@@ -36,6 +36,8 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     std::pair<int, std::vector<std::pair<int,int>>> someDeps;
+    std::vector<double> costs;
+
     if(params.size() < 2){
         std::cout << "[INFO] use doubletree\n";
         someDeps = Generator::GenerateDoubleDepTreeTasks(16);
@@ -63,6 +65,7 @@ int main(int argc, char** argv){
         default:
             std::cout << "[INFO] load " << params[1] << "\n";
             someDeps = Generator::LoadEdgeFile(params[1]);
+            costs = Generator::GetCostIfExist(params[1]);
             if(someDeps.second.size() == 0){
                 std::cout << "[INFO] file is empty, exit...\n";
                 return 1;
@@ -123,9 +126,6 @@ int main(int argc, char** argv){
                                      }},
                                     {"final-with-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinal(clusterSize, 5, 1, true);
-                                     }},
-                                    {"emulated", [nbThreads](Graph& graph, const int /*clusterSize*/){
-                                        graph.partitionEmulated(20, nbThreads);
                                      }}
 #ifdef USE_ACYCLIC
                                     ,
@@ -143,6 +143,14 @@ int main(int argc, char** argv){
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << "Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
+
+        if(costs.size()){
+            for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
+                auto node = aGraph.getNode(idxNode);
+                assert(node->getId() < int(costs.size()));
+                node->setCost(costs[node->getId()]);
+            }
+        }
 
         method.second(aGraph, partMaxSize);
         aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");

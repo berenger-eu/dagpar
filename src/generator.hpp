@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <vector>
 #include <utility>
+#include <set>
 
 class Generator{
 public:
@@ -120,6 +121,7 @@ public:
         if(inFilename.length() >= 4 && inFilename.substr(inFilename.length() - 4) == ".dot"){
             std::pair<int, std::vector<std::pair<int,int>>> edges;
             int maxNodeId = -1;
+            int minNodeId = std::numeric_limits<int>::max();
 
             std::string line;
             while (std::getline(edgeFile, line)){
@@ -135,10 +137,30 @@ public:
 
                     edges.second.emplace_back(edgeSrc, edgeDst);
                     maxNodeId = std::max(maxNodeId, std::max(edgeSrc, edgeDst));
+                    minNodeId = std::min(minNodeId, std::min(edgeSrc, edgeDst));
                 }
             }
 
-            edges.first = maxNodeId+1;
+            for(auto& pair : edges.second){
+                pair.first -= minNodeId;
+                pair.second -= minNodeId;
+            }
+
+            edges.first = maxNodeId+1-minNodeId;
+
+            // Remove duplicate
+            std::set<std::pair<int,int>> alreadyExist;
+            int iter = 0;
+            while(iter != int(edges.second.size())){
+                if(alreadyExist.find(edges.second[iter]) == alreadyExist.end()){
+                    alreadyExist.insert(edges.second[iter]);
+                    iter += 1;
+                }
+                else{
+                    std::swap(edges.second[iter], edges.second.back());
+                    edges.second.pop_back();
+                }
+            }
 
             return edges;
         }
@@ -173,6 +195,59 @@ public:
 
             return edges;
         }
+    }
+
+
+    static std::vector<double> GetCostIfExist(const std::string& inFilename){
+        std::ifstream edgeFile(inFilename);
+
+        if(edgeFile.is_open() == false){
+            std::cout << "[ERROR] Cannot load file " << inFilename << std::endl;
+            std::cout << "[ERROR] Return empty graph" << std::endl;
+            return std::vector<double>();
+        }
+
+        if(inFilename.length() >= 4 && inFilename.substr(inFilename.length() - 4) == ".dot"){
+            std::vector<double> costs;
+
+            int minVecticeId = std::numeric_limits<int>::max();
+
+            std::string line;
+            while (std::getline(edgeFile, line)){
+                const auto arrowPos = line.find("->");
+                if(arrowPos == std::string::npos){
+                    const auto sizePos = line.find("[size =\"");
+                    if(sizePos != std::string::npos){
+                        int verticeId;
+                        if (!(std::istringstream(line) >> verticeId)) {
+                            std::cout << "[ERROR] Bad line " << line << std::endl;
+                            return std::vector<double>();
+                        }
+
+                        double cost;
+                        if (!(std::istringstream(line.substr(arrowPos+7)) >> cost)) {
+                            std::cout << "[ERROR] Bad line " <<line << std::endl;
+                            return std::vector<double>();
+                        }
+
+                        if(int(costs.size()) <= verticeId){
+                            costs.resize(verticeId+1, 0);
+                        }
+                        costs[verticeId] = cost;
+
+                        minVecticeId = std::min(minVecticeId, verticeId);
+                    }
+                }
+            }
+
+            for(int idx = minVecticeId ; idx < int(costs.size()) ; ++idx){
+                costs[idx-minVecticeId] = costs[idx];
+            }
+            costs.resize(std::max(0,int(costs.size()) - minVecticeId));
+
+            return costs;
+        }
+        return std::vector<double>();
     }
 };
 

@@ -151,12 +151,19 @@ public:
             // Remove duplicate
             std::set<std::pair<int,int>> alreadyExist;
             int iter = 0;
+            bool printWarning = true;
             while(iter != int(edges.second.size())){
                 if(alreadyExist.find(edges.second[iter]) == alreadyExist.end()){
                     alreadyExist.insert(edges.second[iter]);
                     iter += 1;
                 }
                 else{
+                    if(printWarning){
+                        printWarning = false;
+                        std::cout << "[INFO] The given .dot file has multiple edges between same node ("
+                                  << edges.second[iter].first << "->" << edges.second[iter].second << std::endl;
+                        std::cout << "[INFO] Only the first edge will be considered and no further warning will be print for any pair ..." << std::endl;
+                    }
                     std::swap(edges.second[iter], edges.second.back());
                     edges.second.pop_back();
                 }

@@ -4,7 +4,7 @@
 #include "graph.hpp"
 #include "executor.hpp"
 #include "generator.hpp"
-
+#include "utils.hpp"
 
 ///////////////////////////////////////////////////////////
 ///
@@ -17,18 +17,17 @@
 ///////////////////////////////////////////////////////////
 
 int main(int argc, char** argv){
-    std::vector<std::string> params;
-    params.insert(params.end(), argv, argv+argc);
-
     const std::string helpContent = "[HELP] You can only pass the graph generation or a filename.\n"
                                     "[HELP] $ ./main [generation method]\n"
                                     "[HELP] Where generation method is among: tree, deptree, 2dgrid, doubletree, filename\n";
 
-    if(params.size() > 2){
+    Utils::ParamHelper params(argc, argv);
+
+    if(params.getNbParams() == 1 || params.getNbParams() > 2){
         std::cout << "[ERROR] Invalid number of parameters.\n" << helpContent;
         return 1;
     }
-    if(params.size() == 2 && params[1] == "--help"){
+    if(params.paramExist({"--help", "--h", "-h", "-help"})){
         std::cout << "[HELP] Asked for help.\n" << helpContent;
         return 1;
     }
@@ -38,13 +37,13 @@ int main(int argc, char** argv){
     std::pair<int, std::vector<std::pair<int,int>>> someDeps;
     std::vector<double> costs;
 
-    if(params.size() < 2){
+    if(params.getNbParams() == 2){
         std::cout << "[INFO] use doubletree\n";
         someDeps = Generator::GenerateDoubleDepTreeTasks(16);
     }
     else{
         const std::vector<std::string> methodNames{"tree", "deptree", "2dgrid", "doubletree"};
-        const size_t choice = std::distance(methodNames.begin(), std::find(methodNames.begin(), methodNames.end(), params[1]));
+        const size_t choice = std::distance(methodNames.begin(), std::find(methodNames.begin(), methodNames.end(), argv[1]));
         switch(choice){
         case 0:
             std::cout << "[INFO] use tree\n";
@@ -63,9 +62,9 @@ int main(int argc, char** argv){
             someDeps = Generator::GenerateDoubleDepTreeTasks(16);
             break;
         default:
-            std::cout << "[INFO] load " << params[1] << "\n";
-            someDeps = Generator::LoadEdgeFile(params[1]);
-            costs = Generator::GetCostIfExist(params[1]);
+            std::cout << "[INFO] load " << argv[1] << "\n";
+            someDeps = Generator::LoadEdgeFile(argv[1]);
+            costs = Generator::GetCostIfExist(argv[1]);
             if(someDeps.second.size() == 0){
                 std::cout << "[INFO] file is empty, exit...\n";
                 return 1;

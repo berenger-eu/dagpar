@@ -37,7 +37,7 @@ int main(int argc, char** argv){
     std::pair<int, std::vector<std::pair<int,int>>> someDeps;
     std::vector<double> costs;
 
-    if(params.getNbParams() == 2){
+    if(params.getNbParams() != 2){
         std::cout << "[INFO] use doubletree\n";
         someDeps = Generator::GenerateDoubleDepTreeTasks(16);
     }
@@ -76,7 +76,7 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 8;
-    const int partMaxSize = 16;
+    const int partMaxSize = 10;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
 
@@ -88,10 +88,10 @@ int main(int argc, char** argv){
                                         graph.partitionFinal(clusterSize, 5, 1);
                                      }},
                                     {"final-with-neighbor-rafinement", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize, 5, 1, clusterSize);
+                                        graph.partitionFinalWithNeighborRefinement(clusterSize, 3, 2, clusterSize);
                                      }},
                                     {"final-with-emulated-rafinement", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize, 5, 1, clusterSize, 0, nbThreads, 0.1, 0.2);
+                                        graph.partitionFinalWithEmulationRefinement(clusterSize, 3, 2, clusterSize, 0, nbThreads, 0.1, 0.2);
                                      }}
                                     };
 

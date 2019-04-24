@@ -81,39 +81,18 @@ int main(int argc, char** argv){
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
 
     const std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods= {
-                                    {"random", [](Graph& graph, const int clusterSize){
-                                        graph.partitionRandom(clusterSize);
-                                     }},
-                                     {"greedy", [](Graph& graph, const int clusterSize){
-                                         graph.partitionGreedy(clusterSize);
-                                      }},
-                                     {"backtrack", [](Graph& graph, const int clusterSize){
-                                         graph.partitionBacktrack(clusterSize);
-                                      }},
-                                     {"advanced", [](Graph& graph, const int clusterSize){
-                                         graph.partition(clusterSize, clusterSize);
-                                      }},
-                                    {"horizontal", [](Graph& graph, const int clusterSize){
-                                        graph.partitionHorizontal(clusterSize);
-                                     }},
                                     {"diamond", [](Graph& graph, const int clusterSize){
                                         graph.partitionDiamond(clusterSize);
                                      }},
-                                    {"temporal", [](Graph& graph, const int clusterSize){
-                                        graph.partitionTemporalPart(clusterSize);
-                                     }},
                                     {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 5, 1, false);
+                                        graph.partitionFinal(clusterSize, 5, 1);
                                      }},
-                                    {"final-with-rafinement", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 5, 1, true);
+                                    {"final-with-neighbor-rafinement", [](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithNeighborRefinement(clusterSize, 5, 1, clusterSize);
+                                     }},
+                                    {"final-with-emulated-rafinement", [](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithEmulationRefinement(clusterSize, 5, 1, clusterSize, 0, nbThreads, 0.1, 0.2);
                                      }}
-#ifdef USE_ACYCLIC
-                                    ,
-                                    {"acyclic", [](Graph& graph, const int clusterSize){
-                                        graph.partitionAcyclic(clusterSize);
-                                     }}
-#endif
                                     };
 
 
@@ -152,15 +131,6 @@ int main(int argc, char** argv){
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";
     }
-#ifdef USE_METIS
-    {
-        Graph aGraph(someDeps.first, someDeps.second);
-        assert(aGraph.isDag());
-        aGraph.partitionMetis(partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-metis.dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-metis.dot -o /tmp/agraph-metis.pdf\n";
-    }
-#endif
 
     return 0;
 }

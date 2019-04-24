@@ -178,30 +178,19 @@ class TestAll : public UTester< TestAll > {
         const std::vector<int> testSizes{4, 10, 40};
         const std::vector<int> clusterSizes{1, 10, 100};
 
-        const std::vector<std::function<void(Graph&,int)>> allPartitionMethods= {[](Graph& graph, const int clusterSize){
-                                            graph.partitionRandom(clusterSize);
-                                         },
-                                         [](Graph& graph, const int clusterSize){
-                                             graph.partitionGreedy(clusterSize);
-                                          },
-                                         [](Graph& graph, const int clusterSize){
-                                             graph.partitionBacktrack(clusterSize);
-                                          },
-                                         [](Graph& graph, const int clusterSize){
-                                             graph.partition(clusterSize, clusterSize);
-                                          },
-                                        [](Graph& graph, const int clusterSize){
-                                            graph.partitionHorizontal(clusterSize);
-                                         },
+        const std::vector<std::function<void(Graph&,int)>> allPartitionMethods= {
                                         [](Graph& graph, const int clusterSize){
                                             graph.partitionDiamond(clusterSize);
                                          },
                                         [](Graph& graph, const int clusterSize){
-                                            graph.partitionTemporalPart(clusterSize);
+                                            graph.partitionFinal(clusterSize, 1, 1);
                                          },
                                             [](Graph& graph, const int clusterSize){
-                                                graph.partitionFinal(clusterSize, 1, 1, false);
-                                             }
+                                                graph.partitionFinalWithNeighborRefinement(clusterSize, 1, 1, clusterSize);
+                                             },
+                                        [](Graph& graph, const int clusterSize){
+                                            graph.partitionFinalWithEmulationRefinement(clusterSize, 1, 1, clusterSize, 0, 10, 0, 0);
+                                         }
                                         };
 
         for(const int testSize : testSizes){

@@ -29,6 +29,7 @@ int main(int argc, char** argv){
                                     "[HELP] --cs [cluster size]\n"
                                     "[HELP] --h1 [height one for the cluster method]\n"
                                     "[HELP] --h2 [height two for the cluster method]\n"
+                                    "[HELP] --export-dot (optional, to export the dot files)\n"
                                     "[HELP] Example:\n"
                                     "[HELP] ./executeone --filename ../data/chukrut_disque.dot --nbt 5 --opt 0 --oppu 0 --oppo 0 --cs 10 --h1 3 --h2 2\n";
 
@@ -95,6 +96,9 @@ int main(int argc, char** argv){
     std::cout << "maxSize = " << maxSize << std::endl;
     std::cout << "h1 = " << h1 << std::endl;
     std::cout << "h2 = " << h2 << std::endl;
+
+
+    const bool exportDot = params.paramExist({"--export-dot", "-export-dot"});
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +176,9 @@ int main(int argc, char** argv){
         }
 
         method.second(aGraph, maxSize);
-        aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
+        if(exportDot){
+            aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
+        }
 
         Graph depGraph = aGraph.getPartitionGraph();
         assert(depGraph.isDag());
@@ -180,7 +186,9 @@ int main(int argc, char** argv){
         std::cout << " - Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
         std::cout << " - Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
 
-        depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+        if(exportDot){
+            depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+        }
 
         int duration;
         std::vector<Executor::Event> events;

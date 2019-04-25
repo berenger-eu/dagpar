@@ -1281,6 +1281,57 @@ public:
             node->setPartitionId(partitionsPermut[node->getPartitionId()]);
         }
     }
+
+    std::vector<int> getDistHistogram() const {
+        std::vector<Node*> originalSources;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node);
+            }
+        }
+
+        std::vector<int> maxDistFromTop(nodes.size(), -1);
+        {
+            std::vector<Node*> sources = originalSources;
+
+            for(auto& node : sources){
+                maxDistFromTop[node->getId()] = 0;
+            }
+
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    if(maxDistFromTop[otherNode->getId()] == -1){
+                        maxDistFromTop[otherNode->getId()] = maxDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromTop[otherNode->getId()] = std::max(maxDistFromTop[selectedNode->getId()] + 1, maxDistFromTop[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        std::vector<int> distHist;
+        for(const int dist : maxDistFromTop){
+            if(int(distHist.size()) <= dist){
+                distHist.resize(dist+1, 0);
+            }
+            distHist[dist] += 1;
+        }
+
+        return distHist;
+    }
 };
 
 #endif

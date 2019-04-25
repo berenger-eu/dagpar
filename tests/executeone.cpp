@@ -52,19 +52,19 @@ int main(int argc, char** argv){
         return 1;
     }
 
-    const double overheadPerTask = params.getValue<int>({"--opt", "-opt"});
+    const double overheadPerTask = params.getValue<double>({"--opt", "-opt"});
     if(params.parseHasFailed()){
         std::cout << "[HELP] Invalid command at opt.\n" << helpContent;
         return 1;
     }
 
-    const double overheadPerPush = params.getValue<int>({"--oppu", "-oppu"});
+    const double overheadPerPush = params.getValue<double>({"--oppu", "-oppu"});
     if(params.parseHasFailed()){
         std::cout << "[HELP] Invalid command at oppu.\n" << helpContent;
         return 1;
     }
 
-    const double overheadPerPop = params.getValue<int>({"--oppo", "-oppo"});
+    const double overheadPerPop = params.getValue<double>({"--oppo", "-oppo"});
     if(params.parseHasFailed()){
         std::cout << "[HELP] Invalid command at oppo.\n" << helpContent;
         return 1;
@@ -113,6 +113,11 @@ int main(int argc, char** argv){
 
     //////////////////////////////////////////////////////////////////////////
 
+    double totalcost = 0;
+    double overheadPerTaskOne = 0;
+    double overheadPerPushOne = 0;
+    double overheadPerPopOne = 0;
+
     {
         std::cout << "Original graph:\n";
         Graph aGraph(someDeps.first, someDeps.second);
@@ -129,9 +134,23 @@ int main(int argc, char** argv){
             }
         }
 
+        for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
+            auto node = aGraph.getNode(idxNode);
+            totalcost += node->getCost();
+        }
+
+        overheadPerTaskOne = (totalcost*overheadPerTask)/double(aGraph.getNbNodes());
+        overheadPerPushOne = (totalcost*overheadPerPush)/double(aGraph.getNbNodes());
+        overheadPerPopOne = (totalcost*overheadPerPop)/double(aGraph.getNbNodes());
+
+        std::cout << "totalcost = " << totalcost << std::endl;
+        std::cout << "overheadPerTaskOne = " << overheadPerTaskOne << std::endl;
+        std::cout << "overheadPerPushOne = " << overheadPerPushOne << std::endl;
+        std::cout << "overheadPerPopOne = " << overheadPerPopOne << std::endl;
+
         int duration;
         std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(aGraph, nbThreads, overheadPerTask, overheadPerPop, overheadPerPush);
+        std::tie(duration, events) = Executor::Execute(aGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
         std::cout << " - Without clustering duration = " << duration << "\n";
     }
 
@@ -147,14 +166,14 @@ int main(int argc, char** argv){
                                     {"final-with-neighbor-rafinement", [h1,h2](Graph& graph, const int clusterSize){
                                         graph.partitionFinalWithNeighborRefinement(clusterSize, h1, h2, clusterSize);
                                      }},
-                                    {"final-with-emulated-rafinement", [h1, h2, overheadPerTask, nbThreads, overheadPerPop, overheadPerPush](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize, h1, h2, clusterSize, overheadPerTask, nbThreads, overheadPerPop, overheadPerPush);
+                                    {"final-with-emulated-rafinement", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithEmulationRefinement(clusterSize, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
                                      }},
                                     {"final-with-neighbor-rafinement-2", [h1, h2](Graph& graph, const int clusterSize){
                                         graph.partitionFinalWithNeighborRefinement(clusterSize/2, h1, h2, clusterSize);
                                      }},
-                                    {"final-with-emulated-rafinement-2", [h1, h2, overheadPerTask, nbThreads, overheadPerPop, overheadPerPush](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize/2, h1, h2, clusterSize, overheadPerTask, nbThreads, overheadPerPop, overheadPerPush);
+                                    {"final-with-emulated-rafinement-2", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithEmulationRefinement(clusterSize/2, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
                                      }}
                                     };
 
@@ -192,7 +211,7 @@ int main(int argc, char** argv){
 
         int duration;
         std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, overheadPerTask, overheadPerPop, overheadPerPush);
+        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
         std::cout << " - with " << method.first << " clustering duration = " << duration << "\n";
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";

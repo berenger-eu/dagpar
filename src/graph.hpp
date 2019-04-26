@@ -26,7 +26,16 @@
 
 #include "node.hpp"
 
-class Graph{
+class Graph{    
+
+    struct InfoPartition{
+        int startingLevel;
+        int limiteLevel;
+        std::set<int> idsParentPartitionsSuccessors;
+        std::set<int> idsParentPartitionsPredecessors;
+        std::set<Node*> idsNodes;
+    };
+
     std::vector<std::unique_ptr<Node>> nodesNotTopological;
     std::vector<Node*> nodes;
 
@@ -68,14 +77,131 @@ class Graph{
     }
 
 
+    static double ExecPartions(const std::vector<InfoPartition>& partitions, const double overheadPerTask,
+            const int nbWorkers, const int nbNodes, const double popOverhead, const double pushOverhead) {
 
-    struct InfoPartition{
-        int startingLevel;
-        int limiteLevel;
-        std::set<int> idsParentPartitionsSuccessors;
-        std::set<int> idsParentPartitionsPredecessors;
-        std::set<Node*> idsNodes;
-    };
+         struct Worker{
+             double scheduledAvailable;
+
+             int currentPartitionId;
+
+             int currentWorkerId;
+             bool operator<(const Worker& other) const{
+                 return scheduledAvailable > other.scheduledAvailable;
+             }
+         };
+
+         std::vector<int> idleWorkerCount;
+
+         idleWorkerCount.resize(nbWorkers);
+         std::iota(idleWorkerCount.begin(), idleWorkerCount.end(), 0);
+
+         std::vector<int> readyPartitions;
+         double currentTime = 0;
+
+         for(int idxPartition = 0 ; idxPartition < int(partitions.size()) ; ++idxPartition){
+             if(partitions[idxPartition].idsNodes.size() && partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
+                 currentTime += pushOverhead;
+                 readyPartitions.emplace_back(idxPartition);
+             }
+         }
+
+         assert(readyPartitions.size());
+
+         std::priority_queue<Worker> workers;
+         int nbComputedTask = 0;
+
+         while(readyPartitions.size() && idleWorkerCount.size()){
+             const int readyPartitionId = readyPartitions.back();
+             readyPartitions.pop_back();
+
+             const int workerId = idleWorkerCount.back();
+             idleWorkerCount.pop_back();
+
+             double totalDuration = 0;
+             for(const auto& node : partitions[readyPartitionId].idsNodes){
+                 totalDuration += node->getCost();
+                 // Not true since we did not update the nodes assert(node->getPartitionId() == readyPartitionId);
+             }
+
+             currentTime += popOverhead;
+
+             Worker wk{currentTime + totalDuration + overheadPerTask,
+                      readyPartitionId,
+                      workerId};
+             workers.push(wk);
+
+             nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
+         }
+
+         assert(workers.size() != 0);
+
+         std::vector<int> countPredecessorsOverPartitions(partitions.size(), 0);
+
+         while(nbComputedTask != nbNodes){
+             {
+                 assert(workers.size());
+                 Worker worker = workers.top();
+                 workers.pop();
+
+                 const int currentPartitionId = worker.currentPartitionId;
+
+                 currentTime = std::max(currentTime, worker.scheduledAvailable);
+
+                 // release dependencies
+                 for(const auto& successorPartition : partitions[currentPartitionId].idsParentPartitionsSuccessors){
+                     countPredecessorsOverPartitions[successorPartition] += 1;
+                     if(countPredecessorsOverPartitions[successorPartition] == int(partitions[successorPartition].idsParentPartitionsPredecessors.size())){
+                         readyPartitions.emplace_back(successorPartition);
+                         currentTime+= pushOverhead;
+                     }
+                 }
+
+                 // Make worker available again
+                 idleWorkerCount.push_back(worker.currentWorkerId);
+             }
+
+             while(readyPartitions.size() && idleWorkerCount.size()){
+                 const int readyPartitionId = readyPartitions.back();
+                 readyPartitions.pop_back();
+
+                 const int workerId = idleWorkerCount.back();
+                 idleWorkerCount.pop_back();
+
+                 double totalDuration = 0;
+                 for(const auto& node : partitions[readyPartitionId].idsNodes){
+                     totalDuration += node->getCost();
+                     // Not true anymore since node has not been updated: assert(node->getPartitionId() == readyPartitionId);
+                 }
+
+                 currentTime += popOverhead;
+
+                 Worker wk{currentTime + totalDuration + overheadPerTask,
+                          readyPartitionId,
+                          workerId};
+                 workers.push(wk);
+
+                 nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
+             }
+
+             assert(workers.size() != 0);
+         }
+
+         assert(workers.size() != 0);
+         while(workers.size() != 0){
+             assert(workers.size());
+             Worker worker = workers.top();
+             workers.pop();
+
+             assert(currentTime <= worker.scheduledAvailable);
+             currentTime = worker.scheduledAvailable;
+
+             assert(partitions[worker.currentPartitionId].idsParentPartitionsSuccessors.size() == 0);
+         }
+
+         return currentTime;
+    }
+
 
     std::vector<InfoPartition> partitionCore(const int maxSize,
                         const int inPhase1Height, const int inPhase2Height){
@@ -949,133 +1075,10 @@ public:
                         const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
         std::vector<InfoPartition> proceedPartitionsInfo = partitionCore(maxSize, inPhase1Height, inPhase2Height);
 
-        auto ExecPartions = [](const std::vector<InfoPartition>& partitions, const double overheadPerTask,
-                const int nbWorkers, const int nbNodes, const double popOverhead, const double pushOverhead) -> double {
-
-             struct Worker{
-                 double scheduledAvailable;
-
-                 int currentPartitionId;
-
-                 int currentWorkerId;
-                 bool operator<(const Worker& other) const{
-                     return scheduledAvailable > other.scheduledAvailable;
-                 }
-             };
-
-             std::vector<int> idleWorkerCount;
-
-             idleWorkerCount.resize(nbWorkers);
-             std::iota(idleWorkerCount.begin(), idleWorkerCount.end(), 0);
-
-             std::vector<int> readyPartitions;
-             double currentTime = 0;
-
-             for(int idxPartition = 0 ; idxPartition < int(partitions.size()) ; ++idxPartition){
-                 if(partitions[idxPartition].idsNodes.size() && partitions[idxPartition].idsParentPartitionsPredecessors.size() == 0){
-                     currentTime += pushOverhead;
-                     readyPartitions.emplace_back(idxPartition);
-                 }
-             }
-
-             assert(readyPartitions.size());
-
-             std::priority_queue<Worker> workers;
-             int nbComputedTask = 0;
-
-             while(readyPartitions.size() && idleWorkerCount.size()){
-                 const int readyPartitionId = readyPartitions.back();
-                 readyPartitions.pop_back();
-
-                 const int workerId = idleWorkerCount.back();
-                 idleWorkerCount.pop_back();
-
-                 double totalDuration = 0;
-                 for(const auto& node : partitions[readyPartitionId].idsNodes){
-                     totalDuration += node->getCost();
-                     // Not true since we did not update the nodes assert(node->getPartitionId() == readyPartitionId);
-                 }
-
-                 currentTime += popOverhead;
-
-                 Worker wk{currentTime + totalDuration + overheadPerTask,
-                          readyPartitionId,
-                          workerId};
-                 workers.push(wk);
-
-                 nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
-             }
-
-             assert(workers.size() != 0);
-
-             std::vector<int> countPredecessorsOverPartitions(partitions.size(), 0);
-
-             while(nbComputedTask != nbNodes){
-                 {
-                     assert(workers.size());
-                     Worker worker = workers.top();
-                     workers.pop();
-
-                     const int currentPartitionId = worker.currentPartitionId;
-
-                     currentTime = std::max(currentTime, worker.scheduledAvailable);
-
-                     // release dependencies
-                     for(const auto& successorPartition : partitions[currentPartitionId].idsParentPartitionsSuccessors){
-                         countPredecessorsOverPartitions[successorPartition] += 1;
-                         if(countPredecessorsOverPartitions[successorPartition] == int(partitions[successorPartition].idsParentPartitionsPredecessors.size())){
-                             readyPartitions.emplace_back(successorPartition);
-                             currentTime+= pushOverhead;
-                         }
-                     }
-
-                     // Make worker available again
-                     idleWorkerCount.push_back(worker.currentWorkerId);
-                 }
-
-                 while(readyPartitions.size() && idleWorkerCount.size()){
-                     const int readyPartitionId = readyPartitions.back();
-                     readyPartitions.pop_back();
-
-                     const int workerId = idleWorkerCount.back();
-                     idleWorkerCount.pop_back();
-
-                     double totalDuration = 0;
-                     for(const auto& node : partitions[readyPartitionId].idsNodes){
-                         totalDuration += node->getCost();
-                         // Not true anymore since node has not been updated: assert(node->getPartitionId() == readyPartitionId);
-                     }
-
-                     currentTime += popOverhead;
-
-                     Worker wk{currentTime + totalDuration + overheadPerTask,
-                              readyPartitionId,
-                              workerId};
-                     workers.push(wk);
-
-                     nbComputedTask += int(partitions[readyPartitionId].idsNodes.size());
-                 }
-
-                 assert(workers.size() != 0);
-             }
-
-             assert(workers.size() != 0);
-             while(workers.size() != 0){
-                 assert(workers.size());
-                 Worker worker = workers.top();
-                 workers.pop();
-
-                 assert(currentTime <= worker.scheduledAvailable);
-                 currentTime = worker.scheduledAvailable;
-
-                 assert(partitions[worker.currentPartitionId].idsParentPartitionsSuccessors.size() == 0);
-             }
-
-             return currentTime;
-        };
-
         double currentExecutionTime = ExecPartions(proceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()),
                                                    inPopOverhead, inPushOverhead);
+
+        std::vector<InfoPartition> copyProceedPartitionsInfo = proceedPartitionsInfo;
 
         bool hasChanged = true;
         while(hasChanged){
@@ -1157,8 +1160,6 @@ public:
                         }
 
                         if(testPartitionIdIsLinkedToAParent == false){
-                            std::vector<InfoPartition> copyProceedPartitionsInfo = proceedPartitionsInfo;
-
                             for(auto idxNext : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors){
                                 copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
                                 copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(parentPartitionId);
@@ -1169,42 +1170,6 @@ public:
                             }
 
                             auto& copyPart = copyProceedPartitionsInfo[idxPart];
-
-                            if(copyPart.startingLevel != copyProceedPartitionsInfo[parentPartitionId].startingLevel){
-                                std::deque<int> parents;
-                                std::set<int> parentsProceed;
-                                if(copyPart.startingLevel > copyProceedPartitionsInfo[parentPartitionId].startingLevel){
-                                    copyPart.startingLevel = copyProceedPartitionsInfo[parentPartitionId].startingLevel;
-                                    for(const auto& idxParent : copyProceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
-                                        if(copyPart.startingLevel < copyProceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
-                                            parents.push_back(idxParent);
-                                            parentsProceed.insert(idxParent);
-                                        }
-                                    }
-                                }
-                                else{
-                                    for(const auto& idxParent : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors){
-                                        if(copyPart.startingLevel < copyProceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
-                                            parents.push_back(idxParent);
-                                            parentsProceed.insert(idxParent);
-                                        }
-                                    }
-                                }
-
-                                while(parents.size()){
-                                    const int testPartitionIter = parents.front();
-                                    parents.pop_front();
-
-                                    copyProceedPartitionsInfo[testPartitionIter].startingLevel = copyPart.startingLevel;
-
-                                    for(const auto& idxParent : copyProceedPartitionsInfo[testPartitionIter].idsParentPartitionsPredecessors){
-                                        if(copyPart.startingLevel < copyProceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
-                                            parents.push_back(idxParent);
-                                            parentsProceed.insert(idxParent);
-                                        }
-                                    }
-                                }
-                            }
 
                             copyPart.limiteLevel = std::max(copyPart.limiteLevel, copyProceedPartitionsInfo[parentPartitionId].limiteLevel);
                             copyPart.idsParentPartitionsSuccessors.insert(copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.begin(),
@@ -1230,6 +1195,16 @@ public:
                                 bestPartitionId = parentPartitionId;
                                 bestExecTime = bestExecTime;
                             }
+
+                            copyProceedPartitionsInfo[idxPart] = proceedPartitionsInfo[idxPart];
+                            copyProceedPartitionsInfo[parentPartitionId] = proceedPartitionsInfo[parentPartitionId];
+
+                            for(auto idxNext : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors){
+                                copyProceedPartitionsInfo[idxNext] = proceedPartitionsInfo[idxNext];
+                            }
+                            for(auto idxPrev : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors){
+                                copyProceedPartitionsInfo[idxPrev] = proceedPartitionsInfo[idxPrev];
+                            }
                         }
                     }
 
@@ -1243,7 +1218,43 @@ public:
                             proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(bestPartitionId);
                         }
 
-                        part.startingLevel = std::min(part.startingLevel, proceedPartitionsInfo[bestPartitionId].startingLevel);
+                        if(part.startingLevel != proceedPartitionsInfo[bestPartitionId].startingLevel){
+                            std::deque<int> parents;
+                            std::set<int> parentsProceed;
+                            if(part.startingLevel > proceedPartitionsInfo[bestPartitionId].startingLevel){
+                                part.startingLevel = proceedPartitionsInfo[bestPartitionId].startingLevel;
+                                for(const auto& idxParent : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
+                                    if(part.startingLevel < proceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
+                                        parents.push_back(idxParent);
+                                        parentsProceed.insert(idxParent);
+                                    }
+                                }
+                            }
+                            else{
+                                for(const auto& idxParent : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
+                                    if(part.startingLevel < proceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
+                                        parents.push_back(idxParent);
+                                        parentsProceed.insert(idxParent);
+                                    }
+                                }
+                            }
+
+                            while(parents.size()){
+                                const int testPartitionIter = parents.front();
+                                parents.pop_front();
+
+                                proceedPartitionsInfo[testPartitionIter].startingLevel = part.startingLevel;
+                                copyProceedPartitionsInfo[testPartitionIter].startingLevel = part.startingLevel;
+
+                                for(const auto& idxParent : proceedPartitionsInfo[testPartitionIter].idsParentPartitionsPredecessors){
+                                    if(part.startingLevel < proceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
+                                        parents.push_back(idxParent);
+                                        parentsProceed.insert(idxParent);
+                                    }
+                                }
+                            }
+                        }
+
                         part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[bestPartitionId].limiteLevel);
                         part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.begin(),
                                                                   proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.end());
@@ -1264,8 +1275,21 @@ public:
                         proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors.clear();
                         proceedPartitionsInfo[bestPartitionId].idsNodes.clear();
 
+
+                        for(auto idxNext : copyProceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors){
+                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
+                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(bestPartitionId);
+                        }
+                        for(auto idxPrev : copyProceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
+                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
+                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(bestPartitionId);
+                        }
+
+                        copyProceedPartitionsInfo[idxPart] = proceedPartitionsInfo[idxPart];
+                        copyProceedPartitionsInfo[bestPartitionId] = proceedPartitionsInfo[bestPartitionId];
+
                         hasChanged = true;
-                        break;
+                        // Do not restart from here break;
                     }
                 }
             }

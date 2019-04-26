@@ -223,7 +223,7 @@ public:
             while (std::getline(edgeFile, line)){
                 const auto arrowPos = line.find("->");
                 if(arrowPos == std::string::npos){
-                    const auto sizePos = line.find("[size =\"");
+                    const auto sizePos = line.find("[size=\"");
                     if(sizePos != std::string::npos){
                         int verticeId;
                         if (!(std::istringstream(line) >> verticeId)) {
@@ -232,7 +232,7 @@ public:
                         }
 
                         double cost;
-                        if (!(std::istringstream(line.substr(arrowPos+7)) >> cost)) {
+                        if (!(std::istringstream(line.substr(sizePos+7)) >> cost)) {
                             std::cout << "[ERROR] Bad line " <<line << std::endl;
                             return std::vector<double>();
                         }

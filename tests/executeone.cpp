@@ -5,6 +5,7 @@
 #include "executor.hpp"
 #include "generator.hpp"
 #include "utils.hpp"
+#include "timer.hpp"
 
 ///////////////////////////////////////////////////////////
 ///
@@ -181,7 +182,7 @@ int main(int argc, char** argv){
     for(const auto& method : allPartitionMethods){
         std::cout << "=======================[" << method.first <<  "]======================================\n";
         Graph aGraph(someDeps.first, someDeps.second);
-        std::cout << " - Number of nodes : " << aGraph.getNbNodes() << "\n";
+        std::cout << " - Number of nodes " << method.first << " : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << " - Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
@@ -194,7 +195,10 @@ int main(int argc, char** argv){
             }
         }
 
+        Timer timer;
         method.second(aGraph, maxSize);
+        timer.stop();
+
         if(exportDot){
             aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
         }
@@ -203,7 +207,9 @@ int main(int argc, char** argv){
         assert(depGraph.isDag());
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << " - Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << " - Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+        std::cout << " - Number of partitions " << method.first << " : " << depGraph.getNbNodes() << "\n";
+        std::cout << " - Avg part size " << method.first << " : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+        std::cout << " - Time to partition with " << method.first << " : " << timer.getElapsed() << "\n";
 
         if(exportDot){
             depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");

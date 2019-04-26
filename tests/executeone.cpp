@@ -119,11 +119,14 @@ int main(int argc, char** argv){
     double overheadPerPushOne = 0;
     double overheadPerPopOne = 0;
 
+    bool isBig;
+
     {
         std::cout << "Original graph:\n";
         Graph aGraph(someDeps.first, someDeps.second);
         std::cout << " - Number of nodes : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
+        isBig = (aGraph.getNbNodes() > 20000);
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << " - Degree of parallelism one the sequential graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
@@ -157,7 +160,27 @@ int main(int argc, char** argv){
 
     //////////////////////////////////////////////////////////////////////////
 
-    const std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods= {
+    std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods;
+
+    if(isBig){
+        allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
+                                    {"diamond", [](Graph& graph, const int clusterSize){
+                                        graph.partitionDiamond(clusterSize);
+                                     }},
+                                    {"final", [h1,h2](Graph& graph, const int clusterSize){
+                                        graph.partitionFinal(clusterSize, h1,h2);
+                                     }},
+                                    {"final-with-neighbor-rafinement", [h1,h2](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithNeighborRefinement(clusterSize, h1, h2, clusterSize);
+                                     }},
+                                    {"final-with-neighbor-rafinement-2", [h1, h2](Graph& graph, const int clusterSize){
+                                        graph.partitionFinalWithNeighborRefinement(clusterSize/2, h1, h2, clusterSize);
+                                     }}
+                                    };
+
+    }
+    else{
+        allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
                                     {"diamond", [](Graph& graph, const int clusterSize){
                                         graph.partitionDiamond(clusterSize);
                                      }},
@@ -177,6 +200,8 @@ int main(int argc, char** argv){
                                         graph.partitionFinalWithEmulationRefinement(clusterSize/2, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
                                      }}
                                     };
+    }
+
 
 
     for(const auto& method : allPartitionMethods){

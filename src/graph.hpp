@@ -367,12 +367,16 @@ class Graph{
                         bool testPartitionIdIsLinkedToAParent = false;
 
                         std::deque<int> children;
+                        std::set<int> childrenProceed;
                         for(const auto& idxChild : proceedPartitionsInfo[testPartitionId].idsParentPartitionsSuccessors){
                             if(selectedNodeParentPartitionIds.find(idxChild) != selectedNodeParentPartitionIds.end()){
                                 testPartitionIdIsLinkedToAParent = true;
                                 break;
                             }
-                            children.push_back(idxChild);
+                            if(childrenProceed.find(idxChild) == childrenProceed.end()){
+                                children.push_back(idxChild);
+                                childrenProceed.insert(idxChild);
+                            }
                         }
 
                         while(testPartitionIdIsLinkedToAParent == false && children.size()){
@@ -384,7 +388,10 @@ class Graph{
                                     testPartitionIdIsLinkedToAParent = true;
                                     break;
                                 }
-                                children.push_back(idxChild);
+                                if(childrenProceed.find(idxChild) == childrenProceed.end()){
+                                    children.push_back(idxChild);
+                                    childrenProceed.insert(idxChild);
+                                }
                             }
                         }
 
@@ -743,12 +750,16 @@ public:
                     bool testPartitionIdIsLinkedToAParent = false;
 
                     std::deque<int> children;
+                    std::set<int> childrenProceed;
                     for(const auto& idxChild : proceedPartitionsInfo[testPartitionId].idsParentPartitionsSuccessors){
                         if(selectedNodeParentPartitionIds.find(idxChild) != selectedNodeParentPartitionIds.end()){
                             testPartitionIdIsLinkedToAParent = true;
                             break;
                         }
-                        children.push_back(idxChild);
+                        if(childrenProceed.find(idxChild) == childrenProceed.end()){
+                            children.push_back(idxChild);
+                            childrenProceed.insert(idxChild);
+                        }
                     }
 
                     while(testPartitionIdIsLinkedToAParent == false && children.size()){
@@ -760,7 +771,10 @@ public:
                                 testPartitionIdIsLinkedToAParent = true;
                                 break;
                             }
-                            children.push_back(idxChild);
+                            if(childrenProceed.find(idxChild) == childrenProceed.end()){
+                                children.push_back(idxChild);
+                                childrenProceed.insert(idxChild);
+                            }
                         }
                     }
 

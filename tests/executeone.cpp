@@ -163,6 +163,7 @@ int main(int argc, char** argv){
     std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods;
 
     if(isBig){
+        std::cout << "Graph is considered big" << std::endl;
         allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
                                     {"diamond", [](Graph& graph, const int clusterSize){
                                         graph.partitionDiamond(clusterSize);
@@ -180,6 +181,7 @@ int main(int argc, char** argv){
 
     }
     else{
+std::cout << "Graph is considered NOT big" << std::endl;
         allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
                                     {"diamond", [](Graph& graph, const int clusterSize){
                                         graph.partitionDiamond(clusterSize);

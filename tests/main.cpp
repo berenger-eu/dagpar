@@ -125,7 +125,7 @@ int main(int argc, char** argv){
         depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
         std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/depgraph-" << method.first << ".dot -o /tmp/depgraph-" << method.first << ".pdf\n";
 
-        int duration;
+        double duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, 0, 0.1, 0.2);
         Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);

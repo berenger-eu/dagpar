@@ -89,7 +89,7 @@ public:
         }
     };
 
-    static std::tuple<int,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers,
+    static std::tuple<double,std::vector<Event>> Execute(const Graph& inGraph, const int inNbWorkers,
                                                       const double overheadPerTask = 0,
                                                       const double popOverhead = 0,
                                                       const double pushOverhead = 0){

@@ -120,11 +120,15 @@ int main(int argc, char** argv){
     double overheadPerPopOne = 0;
 
     bool isBig;
+    int bestGranularity = 1;
+    double bestExecTime;
+    int nbNodes;
 
     {
         std::cout << "Original graph:\n";
         Graph aGraph(someDeps.first, someDeps.second);
         std::cout << " - Number of nodes : " << aGraph.getNbNodes() << "\n";
+        nbNodes = aGraph.getNbNodes();
         assert(aGraph.isDag());
         isBig = (aGraph.getNbNodes() > 20000);
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
@@ -156,63 +160,21 @@ int main(int argc, char** argv){
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(aGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
         std::cout << " - Without clustering duration = " << duration << "\n";
+        bestExecTime = duration;
     }
 
     //////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods;
+    auto doItFunc = [&someDeps, &costs, exportDot, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne](const int idxGranularity, const std::string& methodName, auto method) -> double {
+        std::cout << "=======================[" << methodName <<  "]======================================\n";
 
-    if(isBig){
-        std::cout << "Graph is considered big" << std::endl;
-        allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
-                                    {"diamond", [](Graph& graph, const int clusterSize){
-                                        graph.partitionDiamond(clusterSize);
-                                     }},
-                                    {"final", [h1,h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, h1,h2);
-                                     }},
-                                    {"final-with-neighbor-rafinement", [h1,h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize, h1, h2, clusterSize);
-                                     }},
-                                    {"final-with-neighbor-rafinement-2", [h1, h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize/2, h1, h2, clusterSize);
-                                     }}
-                                    };
+        std::cout << " - Granularity : " << idxGranularity << std::endl;
 
-    }
-    else{
-std::cout << "Graph is considered NOT big" << std::endl;
-        allPartitionMethods = std::vector<std::pair<std::string,std::function<void(Graph&,int)>>>{
-                                    {"diamond", [](Graph& graph, const int clusterSize){
-                                        graph.partitionDiamond(clusterSize);
-                                     }},
-                                    {"final", [h1,h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, h1,h2);
-                                     }},
-                                    {"final-with-neighbor-rafinement", [h1,h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize, h1, h2, clusterSize);
-                                     }},
-                                    {"final-with-emulated-rafinement", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-                                     }},
-                                    {"final-with-neighbor-rafinement-2", [h1, h2](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize/2, h1, h2, clusterSize);
-                                     }},
-                                    {"final-with-emulated-rafinement-2", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize/2, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-                                     }}
-                                    };
-    }
-
-
-
-    for(const auto& method : allPartitionMethods){
-        std::cout << "=======================[" << method.first <<  "]======================================\n";
         Graph aGraph(someDeps.first, someDeps.second);
-        std::cout << " - Number of nodes " << method.first << " : " << aGraph.getNbNodes() << "\n";
+        std::cout << " - Number of nodes " << methodName << " : " << aGraph.getNbNodes() << "\n";
         assert(aGraph.isDag());
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
-        std::cout << " - Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
+        std::cout << " - Degree of parallelism one the " << methodName << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
         if(costs.size()){
             for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
@@ -223,32 +185,75 @@ std::cout << "Graph is considered NOT big" << std::endl;
         }
 
         Timer timer;
-        method.second(aGraph, maxSize);
+        method(aGraph, idxGranularity);
         timer.stop();
 
         if(exportDot){
-            aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
+            aGraph.saveToDot("/tmp/agraph-" + methodName + ".dot");
         }
 
         Graph depGraph = aGraph.getPartitionGraph();
         assert(depGraph.isDag());
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << " - Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << " - Number of partitions " << method.first << " : " << depGraph.getNbNodes() << "\n";
-        std::cout << " - Avg part size " << method.first << " : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-        std::cout << " - Time to partition with " << method.first << " : " << timer.getElapsed() << "\n";
+        std::cout << " - Degree of parallelism after " << methodName << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
+        std::cout << " - Number of partitions " << methodName << " : " << depGraph.getNbNodes() << "\n";
+        std::cout << " - Avg part size " << methodName << " : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+        std::cout << " - Time to partition with " << methodName << " : " << timer.getElapsed() << "\n";
 
         if(exportDot){
-            depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+            depGraph.saveToDot("/tmp/depgraph-" + methodName + ".dot");
         }
 
-        int duration;
+        double duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
-        std::cout << " - with " << method.first << " clustering duration = " << duration << "\n";
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
+        std::cout << " - with " << methodName << " clustering duration = " << duration << "\n";
+        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + methodName + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";
+        return duration;
+    };
+
+    {
+        int idxGranularity = 2;
+        while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
+            const double execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+                graph.partitionFinal(clusterSize, h1,h2);
+             });
+
+            if(execFinal < bestExecTime){
+                bestExecTime = execFinal;
+                bestGranularity = idxGranularity;
+            }
+
+            doItFunc(idxGranularity, "diamond", [h1,h2](Graph& graph, const int clusterSize){
+                graph.partitionDiamond(clusterSize);
+            });
+
+            idxGranularity +=1;
+        }
     }
+
+    std::cout << " - Best granularity : " << bestGranularity << std::endl;
+    std::cout << " - Best duration : " << bestExecTime << std::endl;
+
+    doItFunc(bestGranularity, "final-with-neighbor-rafinement", [h1,h2](Graph& graph, const int clusterSize){
+        graph.partitionFinalWithNeighborRefinement(clusterSize, h1, h2, clusterSize);
+    });
+
+    doItFunc(bestGranularity, "final-with-neighbor-rafinement-2", [h1,h2](Graph& graph, const int clusterSize){
+        graph.partitionFinalWithNeighborRefinement(clusterSize/2, h1, h2, clusterSize);
+    });
+
+    if(!isBig){
+        doItFunc(bestGranularity, "final-with-emulated-rafinement", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+            graph.partitionFinalWithEmulationRefinement(clusterSize, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+         });
+
+        doItFunc(bestGranularity, "final-with-emulated-rafinement-2", [h1, h2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+            graph.partitionFinalWithEmulationRefinement(clusterSize/2, h1, h2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+         });
+    }
+
 
     return 0;
 }

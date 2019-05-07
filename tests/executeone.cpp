@@ -198,6 +198,8 @@ int main(int argc, char** argv){
             int h1 = std::max(1,int(idxGranularity*3./4.));
             int h2 = std::max(1,int(idxGranularity/4.));
             double execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+                std::cout << " - h1 : " << h1 << std::endl;
+                std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
              });
 
@@ -212,6 +214,8 @@ int main(int argc, char** argv){
             h2 = std::max(1,int((idxGranularity+1)/2));
 
             execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+                std::cout << " - h1 : " << h1 << std::endl;
+                std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
              });
 
@@ -226,6 +230,8 @@ int main(int argc, char** argv){
             h2 = std::max(1,int(idxGranularity*3./4.));
 
             execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+                std::cout << " - h1 : " << h1 << std::endl;
+                std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
              });
 
@@ -246,21 +252,31 @@ int main(int argc, char** argv){
 
     std::cout << " - Best granularity : " << bestGranularity << std::endl;
     std::cout << " - Best duration : " << bestExecTime << std::endl;
+    std::cout << " - Best h1 : " << bestH1 << std::endl;
+    std::cout << " - Best h2 : " << bestH2 << std::endl;
 
     doItFunc(bestGranularity, "final-with-neighbor-rafinement", [bestH1,bestH2](Graph& graph, const int clusterSize){
+        std::cout << " - h1 : " << bestH1 << std::endl;
+        std::cout << " - h2 : " << bestH2 << std::endl;
         graph.partitionFinalWithNeighborRefinement(clusterSize, bestH1, bestH2, clusterSize);
     });
 
     doItFunc(bestGranularity, "final-with-neighbor-rafinement-2", [bestH1,bestH2](Graph& graph, const int clusterSize){
+        std::cout << " - h1 : " << std::max(1,bestH1/2) << std::endl;
+        std::cout << " - h2 : " << bestH2 << std::endl;
         graph.partitionFinalWithNeighborRefinement(clusterSize/2, std::max(1,bestH1/2), bestH2, clusterSize);
     });
 
     if(!isBig){
         doItFunc(bestGranularity, "final-with-emulated-rafinement", [bestH1,bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+            std::cout << " - h1 : " << bestH1 << std::endl;
+            std::cout << " - h2 : " << bestH2 << std::endl;
             graph.partitionFinalWithEmulationRefinement(clusterSize, bestH1,bestH2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
          });
 
         doItFunc(bestGranularity, "final-with-emulated-rafinement-2", [bestH1, bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+            std::cout << " - h1 : " << std::max(1,bestH1/2) << std::endl;
+            std::cout << " - h2 : " << bestH2 << std::endl;
             graph.partitionFinalWithEmulationRefinement(clusterSize/2, std::max(1, bestH1/2), bestH2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
          });
     }

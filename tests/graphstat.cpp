@@ -95,8 +95,8 @@ int main(int argc, char** argv){
             maxedges = std::max(maxedges, int(node->getSuccessors().size()));
         }
 
-        std::cout << " - totaledges : " << totalcost << "\n";
-        std::cout << " - maxedges : " << totalcost << "\n";
+        std::cout << " - totaledges : " << totaledges << "\n";
+        std::cout << " - maxedges : " << maxedges << "\n";
 
         const auto distHist = aGraph.getDistHistogram();
         int maxHist = std::numeric_limits<int>::min();

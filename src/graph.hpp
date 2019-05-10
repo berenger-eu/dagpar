@@ -894,6 +894,14 @@ public:
                                               const int maxSizeAfterRefinement){
         std::vector<InfoPartition> proceedPartitionsInfo = partitionCore(maxSize, inPhase1Height, inPhase2Height);
 
+        for(int idxPartRev = int(proceedPartitionsInfo.size()) - 1 ; idxPartRev >= 0 ; --idxPartRev){
+            for(const auto& idxParent : proceedPartitionsInfo[idxPartRev].idsParentPartitionsPredecessors){
+                if(proceedPartitionsInfo[idxPartRev].startingLevel < proceedPartitionsInfo[idxParent].startingLevel){
+                    proceedPartitionsInfo[idxParent].startingLevel = proceedPartitionsInfo[idxPartRev].startingLevel;
+                }
+            }
+        }
+
         bool hasChanged = true;
         while(hasChanged){
             hasChanged = false;
@@ -1088,6 +1096,14 @@ public:
                         const int maxSizeAfterRefinement, const double inOverheadPerTask,
                         const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
         std::vector<InfoPartition> proceedPartitionsInfo = partitionCore(maxSize, inPhase1Height, inPhase2Height);
+
+        for(int idxPartRev = int(proceedPartitionsInfo.size()) - 1 ; idxPartRev >= 0 ; --idxPartRev){
+            for(const auto& idxParent : proceedPartitionsInfo[idxPartRev].idsParentPartitionsPredecessors){
+                if(proceedPartitionsInfo[idxPartRev].startingLevel < proceedPartitionsInfo[idxParent].startingLevel){
+                    proceedPartitionsInfo[idxParent].startingLevel = proceedPartitionsInfo[idxPartRev].startingLevel;
+                }
+            }
+        }
 
         double currentExecutionTime = ExecPartions(proceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()),
                                                    inPopOverhead, inPushOverhead);

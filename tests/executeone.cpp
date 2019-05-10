@@ -169,7 +169,10 @@ int main(int argc, char** argv){
         }
 
         Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
+        if(!depGraph.isDag()){
+            std::cout << "[Error] not a DAG, will not exit...." << std::endl;
+            exit(-1);
+        }
         std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
         std::cout << " - Degree of parallelism after " << methodName << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
         std::cout << " - Number of partitions " << methodName << " : " << depGraph.getNbNodes() << "\n";

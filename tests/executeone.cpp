@@ -132,7 +132,7 @@ int main(int argc, char** argv){
         std::cout << "overheadPerPushOne = " << overheadPerPushOne << std::endl;
         std::cout << "overheadPerPopOne = " << overheadPerPopOne << std::endl;
 
-        int duration;
+        double duration;
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(aGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
         std::cout << " - Without clustering duration = " << duration << "\n";
@@ -187,7 +187,7 @@ int main(int argc, char** argv){
         std::vector<Executor::Event> events;
         std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne);
         std::cout << " - with " << methodName << " clustering duration = " << duration << "\n";
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + methodName + ".svg", events, nbThreads);
+        //Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + methodName + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";
         return duration;
     };

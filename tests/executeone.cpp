@@ -95,10 +95,10 @@ int main(int argc, char** argv){
     double overheadPerPushOne = 0;
     double overheadPerPopOne = 0;
 
-    bool isBig;
     int bestGranularity = 1;
     double bestExecTime;
     int nbNodes;
+    double bestAvgClusterSize = 0;
 
     {
         std::cout << "Original graph:\n";
@@ -106,7 +106,6 @@ int main(int argc, char** argv){
         std::cout << " - Number of nodes : " << aGraph.getNbNodes() << "\n";
         nbNodes = aGraph.getNbNodes();
         assert(aGraph.isDag());
-        isBig = (aGraph.getNbNodes() > 20000);
         std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
         std::cout << " - Degree of parallelism one the sequential graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
@@ -141,7 +140,7 @@ int main(int argc, char** argv){
 
     //////////////////////////////////////////////////////////////////////////
 
-    auto doItFunc = [&someDeps, &costs, exportDot, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne](const int idxGranularity, const std::string& methodName, auto method) -> double {
+    auto doItFunc = [&someDeps, &costs, exportDot, nbThreads, overheadPerTaskOne, overheadPerPopOne, overheadPerPushOne](const int idxGranularity, const std::string& methodName, auto method) -> std::tuple<double,double> {
         std::cout << "=======================[" << methodName <<  "]======================================\n";
 
         std::cout << " - Granularity : " << idxGranularity << std::endl;
@@ -189,7 +188,7 @@ int main(int argc, char** argv){
         std::cout << " - with " << methodName << " clustering duration = " << duration << "\n";
         //Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + methodName + ".svg", events, nbThreads);
         std::cout << "=============================================================\n";
-        return duration;
+        return std::make_tuple(duration, double(aGraph.getNbNodes())/double(depGraph.getNbNodes()));
     };
 
     int bestH1 = 0;
@@ -200,7 +199,9 @@ int main(int argc, char** argv){
         while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
             int h1 = std::max(1,int(idxGranularity*3./4.));
             int h2 = std::max(1,int(idxGranularity/4.));
-            double execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            double execFinal;
+            double avgClusterSize;
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
@@ -211,12 +212,13 @@ int main(int argc, char** argv){
                 bestGranularity = idxGranularity;
                 bestH1 = h1;
                 bestH2 = h2;
+                bestAvgClusterSize = avgClusterSize;
             }
 
             h1 = std::max(1,int((idxGranularity+1)/2));
             h2 = std::max(1,int((idxGranularity+1)/2));
 
-            execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
@@ -227,12 +229,13 @@ int main(int argc, char** argv){
                 bestGranularity = idxGranularity;
                 bestH1 = h1;
                 bestH2 = h2;
+                bestAvgClusterSize = avgClusterSize;
             }
 
             h1 = std::max(1,int(idxGranularity/4.));
             h2 = std::max(1,int(idxGranularity*3./4.));
 
-            execFinal = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
@@ -243,6 +246,7 @@ int main(int argc, char** argv){
                 bestGranularity = idxGranularity;
                 bestH1 = h1;
                 bestH2 = h2;
+                bestAvgClusterSize = avgClusterSize;
             }
 
             doItFunc(idxGranularity, "diamond", [h1,h2](Graph& graph, const int clusterSize){
@@ -252,163 +256,12 @@ int main(int argc, char** argv){
             idxGranularity +=1;
         }
     }
-//    {
-//            int testGranularities[5];
-//            double testExecutionTimes[5];
-//        {
-//            testGranularities[0] = 1;
-//            const int idxGranularity = testGranularities[0];
-//            int h1 = std::max(1,int(idxGranularity*3./4.));
-//            int h2 = std::max(1,int(idxGranularity/4.));
-//            testExecutionTimes[0] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                std::cout << " - h1 : " << h1 << std::endl;
-//                std::cout << " - h2 : " << h2 << std::endl;
-//                graph.partitionFinal(clusterSize, h1,h2);
-//             });
-
-//            if(testExecutionTimes[0] < bestExecTime){
-//                bestExecTime = testExecutionTimes[0];
-//                bestGranularity = testGranularities[0];
-//                bestH1 = h1;
-//                bestH2 = h2;
-//            }
-//        }
-//        {
-//            testGranularities[4] = nbNodes;
-//            const int idxGranularity = testGranularities[4];
-//            int h1 = std::max(1,int(idxGranularity*3./4.));
-//            int h2 = std::max(1,int(idxGranularity/4.));
-//            testExecutionTimes[4] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                std::cout << " - h1 : " << h1 << std::endl;
-//                std::cout << " - h2 : " << h2 << std::endl;
-//                graph.partitionFinal(clusterSize, h1,h2);
-//             });
-
-//            if(testExecutionTimes[4] < bestExecTime){
-//                bestExecTime = testExecutionTimes[4];
-//                bestGranularity = testGranularities[4];
-//                bestH1 = h1;
-//                bestH2 = h2;
-//            }
-//        }
-//        {
-//            testGranularities[2] = (nbNodes+1)/2;
-//            const int idxGranularity = testGranularities[2];
-//            int h1 = std::max(1,int(idxGranularity*3./4.));
-//            int h2 = std::max(1,int(idxGranularity/4.));
-//            testExecutionTimes[2] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                std::cout << " - h1 : " << h1 << std::endl;
-//                std::cout << " - h2 : " << h2 << std::endl;
-//                graph.partitionFinal(clusterSize, h1,h2);
-//             });
-
-//            if(testExecutionTimes[2] < bestExecTime){
-//                bestExecTime = testExecutionTimes[2];
-//                bestGranularity = testGranularities[2];
-//                bestH1 = h1;
-//                bestH2 = h2;
-//            }
-//        }
-//        {
-//            testGranularities[1] = (nbNodes+1)/4;
-//            const int idxGranularity = testGranularities[1];
-//            int h1 = std::max(1,int(idxGranularity*3./4.));
-//            int h2 = std::max(1,int(idxGranularity/4.));
-//            testExecutionTimes[1] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                std::cout << " - h1 : " << h1 << std::endl;
-//                std::cout << " - h2 : " << h2 << std::endl;
-//                graph.partitionFinal(clusterSize, h1,h2);
-//             });
-
-//            if(testExecutionTimes[1] < bestExecTime){
-//                bestExecTime = testExecutionTimes[1];
-//                bestGranularity = testGranularities[1];
-//                bestH1 = h1;
-//                bestH2 = h2;
-//            }
-//        }
-//        {
-//            testGranularities[3] = (3*(nbNodes+1))/4;
-//            const int idxGranularity = testGranularities[3];
-//            int h1 = std::max(1,int(idxGranularity*3./4.));
-//            int h2 = std::max(1,int(idxGranularity/4.));
-//            testExecutionTimes[3] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                std::cout << " - h1 : " << h1 << std::endl;
-//                std::cout << " - h2 : " << h2 << std::endl;
-//                graph.partitionFinal(clusterSize, h1,h2);
-//             });
-
-//            if(testExecutionTimes[3] < bestExecTime){
-//                bestExecTime = testExecutionTimes[3];
-//                bestGranularity = testGranularities[3];
-//                bestH1 = h1;
-//                bestH2 = h2;
-//            }
-//        }
-//        while(testGranularities[0] + 4 <= testGranularities[4]){
-//            std::cout << "[" << testGranularities[0] << "|" << testExecutionTimes[0] << "] "
-//                                      << "[" << testGranularities[1] << "|" << testExecutionTimes[1] << "] "
-//                                      << "[" << testGranularities[2] << "|" << testExecutionTimes[2] << "] "
-//                                      << "[" << testGranularities[3] << "|" << testExecutionTimes[3] << "] "
-//                                      << "[" << testGranularities[4] << "|" << testExecutionTimes[4] << "] " << std::endl;
-
-//            if(testExecutionTimes[1] < testExecutionTimes[3]){
-//                testGranularities[4] = testGranularities[2];
-//                testExecutionTimes[4] = testExecutionTimes[2];
-
-//                testGranularities[2] = testGranularities[1];
-//                testExecutionTimes[2] = testExecutionTimes[1];
-//            }
-//            else{
-//                testGranularities[0] = testGranularities[2];
-//                testExecutionTimes[0] = testExecutionTimes[2];
-
-//                testGranularities[2] = testGranularities[3];
-//                testExecutionTimes[2] = testExecutionTimes[3];
-//            }
-//            {
-//                testGranularities[1] = (testGranularities[2]-testGranularities[0]+1)/2 + testGranularities[0];
-//                const int idxGranularity = testGranularities[1];
-//                int h1 = std::max(1,int(idxGranularity*3./4.));
-//                int h2 = std::max(1,int(idxGranularity/4.));
-//                testExecutionTimes[1] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                    std::cout << " - h1 : " << h1 << std::endl;
-//                    std::cout << " - h2 : " << h2 << std::endl;
-//                    graph.partitionFinal(clusterSize, h1,h2);
-//                 });
-
-//                if(testExecutionTimes[1] < bestExecTime){
-//                    bestExecTime = testExecutionTimes[1];
-//                    bestGranularity = testGranularities[1];
-//                    bestH1 = h1;
-//                    bestH2 = h2;
-//                }
-//            }
-//            {
-//                testGranularities[3] = (testGranularities[4]-testGranularities[2]+1)/2 + testGranularities[2];
-//                const int idxGranularity = testGranularities[3];
-//                int h1 = std::max(1,int(idxGranularity*3./4.));
-//                int h2 = std::max(1,int(idxGranularity/4.));
-//                testExecutionTimes[3] = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-//                    std::cout << " - h1 : " << h1 << std::endl;
-//                    std::cout << " - h2 : " << h2 << std::endl;
-//                    graph.partitionFinal(clusterSize, h1,h2);
-//                 });
-
-//                if(testExecutionTimes[3] < bestExecTime){
-//                    bestExecTime = testExecutionTimes[3];
-//                    bestGranularity = testGranularities[3];
-//                    bestH1 = h1;
-//                    bestH2 = h2;
-//                }
-//            }
-//        }
-//    }
 
     std::cout << " - Best granularity : " << bestGranularity << std::endl;
     std::cout << " - Best duration : " << bestExecTime << std::endl;
     std::cout << " - Best h1 : " << bestH1 << std::endl;
     std::cout << " - Best h2 : " << bestH2 << std::endl;
+    std::cout << " - Best avg cluster size : " << bestAvgClusterSize << std::endl;
 
     doItFunc(bestGranularity, "final-with-neighbor-rafinement", [bestH1,bestH2](Graph& graph, const int clusterSize){
         std::cout << " - h1 : " << bestH1 << std::endl;
@@ -422,13 +275,15 @@ int main(int argc, char** argv){
         graph.partitionFinalWithNeighborRefinement(std::max(1,clusterSize/2), std::max(1,bestH1/2), bestH2, clusterSize);
     });
 
-    if(!isBig){
+    if(nbNodes/bestAvgClusterSize < 20000){
         doItFunc(bestGranularity, "final-with-emulated-rafinement", [bestH1,bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
             std::cout << " - h1 : " << bestH1 << std::endl;
             std::cout << " - h2 : " << bestH2 << std::endl;
             graph.partitionFinalWithEmulationRefinement(clusterSize, bestH1,bestH2, clusterSize, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
          });
+    }
 
+    if(nbNodes/(bestAvgClusterSize/2) < 20000){
         doItFunc(bestGranularity, "final-with-emulated-rafinement-2", [bestH1, bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
             std::cout << " - h1 : " << std::max(1,bestH1/2) << std::endl;
             std::cout << " - h2 : " << bestH2 << std::endl;

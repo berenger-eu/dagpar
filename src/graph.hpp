@@ -1223,7 +1223,8 @@ public:
 
                             if(testExecutionTime < bestExecTime){
                                 bestPartitionId = parentPartitionId;
-                                bestExecTime = bestExecTime;
+                                bestExecTime = testExecutionTime;
+
                             }
 
                             copyProceedPartitionsInfo[idxPart] = proceedPartitionsInfo[idxPart];

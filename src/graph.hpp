@@ -1387,6 +1387,19 @@ public:
 
         return distHist;
     }
+
+    int getNbEdges() const {
+        // The number of edges might be different than
+        // the number of dependencies given in the constructor
+        // because it could have contain some duplicate
+        int sumNbEdges = 0;
+
+        for(const auto& node : nodesNotTopological){
+            sumNbEdges += int(node->getPredecessors().size());
+        }
+
+        return sumNbEdges;
+    }
 };
 
 #endif

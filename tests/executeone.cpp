@@ -97,8 +97,9 @@ int main(int argc, char** argv){
 
     int bestGranularity = 1;
     double bestExecTime;
-    int nbNodes;
     double bestAvgClusterSize = 0;
+
+    int nbNodes;
 
     {
         std::cout << "Original graph:\n";

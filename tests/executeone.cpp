@@ -270,7 +270,7 @@ int main(int argc, char** argv){
         graph.partitionFinalWithNeighborRefinement(clusterSize, bestH1, bestH2, clusterSize);
     });
 
-    if(nbNodes/bestAvgClusterSize < 20000){
+    if(nbNodes/bestAvgClusterSize < 5000){
         doItFunc(bestGranularity, "final-with-emulated-rafinement", [bestH1,bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
             std::cout << " - h1 : " << bestH1 << std::endl;
             std::cout << " - h2 : " << bestH2 << std::endl;

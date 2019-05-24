@@ -1111,7 +1111,9 @@ public:
         std::vector<InfoPartition> copyProceedPartitionsInfo = proceedPartitionsInfo;
 
         bool hasChanged = true;
-        while(hasChanged){
+        double previousExecutionTime;
+        do{
+            previousExecutionTime = currentExecutionTime;
             hasChanged = false;
 
             for(int idxPart = 0 ; idxPart < int(proceedPartitionsInfo.size()) ; ++idxPart){
@@ -1190,71 +1192,76 @@ public:
                         }
 
                         if(testPartitionIdIsLinkedToAParent == false){
-                            for(auto idxNext : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors){
-                                copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
-                                copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(parentPartitionId);
+                            const int leftPart = (idxPart < parentPartitionId? idxPart : parentPartitionId);
+                            const int rightPart = (idxPart > parentPartitionId? idxPart : parentPartitionId);
+
+                            for(auto idxNext : copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors){
+                                copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(leftPart);
+                                copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(rightPart);
                             }
-                            for(auto idxPrev : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors){
-                                copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
-                                copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(parentPartitionId);
+                            for(auto idxPrev : copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors){
+                                copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(leftPart);
+                                copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(rightPart);
                             }
 
-                            auto& copyPart = copyProceedPartitionsInfo[idxPart];
+                            auto& copyPart = copyProceedPartitionsInfo[leftPart];
 
-                            copyPart.limiteLevel = std::max(copyPart.limiteLevel, copyProceedPartitionsInfo[parentPartitionId].limiteLevel);
-                            copyPart.idsParentPartitionsSuccessors.insert(copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.begin(),
-                                                                      copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.end());
-                            copyPart.idsParentPartitionsSuccessors.erase(idxPart);
-                            copyPart.idsParentPartitionsSuccessors.erase(parentPartitionId);
-                            copyPart.idsParentPartitionsPredecessors.insert(copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors.begin(),
-                                                                        copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors.end());
-                            copyPart.idsParentPartitionsPredecessors.erase(idxPart);
-                            copyPart.idsParentPartitionsPredecessors.erase(parentPartitionId);
-                            copyPart.idsNodes.insert(copyProceedPartitionsInfo[parentPartitionId].idsNodes.begin(),
-                                                 copyProceedPartitionsInfo[parentPartitionId].idsNodes.end());
+                            copyPart.limiteLevel = std::max(copyPart.limiteLevel, copyProceedPartitionsInfo[rightPart].limiteLevel);
+                            copyPart.idsParentPartitionsSuccessors.insert(copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.begin(),
+                                                                      copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.end());
+                            copyPart.idsParentPartitionsSuccessors.erase(leftPart);
+                            copyPart.idsParentPartitionsSuccessors.erase(rightPart);
+                            copyPart.idsParentPartitionsPredecessors.insert(copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.begin(),
+                                                                        copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.end());
+                            copyPart.idsParentPartitionsPredecessors.erase(leftPart);
+                            copyPart.idsParentPartitionsPredecessors.erase(rightPart);
+                            copyPart.idsNodes.insert(copyProceedPartitionsInfo[rightPart].idsNodes.begin(),
+                                                 copyProceedPartitionsInfo[rightPart].idsNodes.end());
 
-                            copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors.clear();
-                            copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors.clear();
-                            copyProceedPartitionsInfo[parentPartitionId].idsNodes.clear();
+                            copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.clear();
+                            copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.clear();
+                            copyProceedPartitionsInfo[rightPart].idsNodes.clear();
 
 
-                            double testExecutionTime = ExecPartions(copyProceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()),
+                            const double testExecutionTime = ExecPartions(copyProceedPartitionsInfo, inOverheadPerTask, inNbWorkers, int(nodes.size()),
                                                                     inPopOverhead, inPushOverhead);
 
                             if(testExecutionTime < bestExecTime){
                                 bestPartitionId = parentPartitionId;
                                 bestExecTime = testExecutionTime;
-
                             }
 
-                            copyProceedPartitionsInfo[idxPart] = proceedPartitionsInfo[idxPart];
-                            copyProceedPartitionsInfo[parentPartitionId] = proceedPartitionsInfo[parentPartitionId];
+                            copyProceedPartitionsInfo[leftPart] = proceedPartitionsInfo[leftPart];
+                            copyProceedPartitionsInfo[rightPart] = proceedPartitionsInfo[rightPart];
 
-                            for(auto idxNext : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsSuccessors){
+                            for(auto idxNext : copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors){
                                 copyProceedPartitionsInfo[idxNext] = proceedPartitionsInfo[idxNext];
                             }
-                            for(auto idxPrev : copyProceedPartitionsInfo[parentPartitionId].idsParentPartitionsPredecessors){
+                            for(auto idxPrev : copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors){
                                 copyProceedPartitionsInfo[idxPrev] = proceedPartitionsInfo[idxPrev];
                             }
                         }
                     }
 
                     if(bestPartitionId != -1){
-                        for(auto idxNext : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors){
-                            proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
-                            proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(bestPartitionId);
+                        const int leftPart = (idxPart < bestPartitionId? idxPart : bestPartitionId);
+                        const int rightPart = (idxPart > bestPartitionId? idxPart : bestPartitionId);
+
+                        for(auto idxNext : proceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors){
+                            proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(leftPart);
+                            proceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(rightPart);
                         }
-                        for(auto idxPrev : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
-                            proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
-                            proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(bestPartitionId);
+                        for(auto idxPrev : proceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors){
+                            proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(leftPart);
+                            proceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(rightPart);
                         }
 
-                        if(part.startingLevel != proceedPartitionsInfo[bestPartitionId].startingLevel){
+                        if(part.startingLevel != proceedPartitionsInfo[rightPart].startingLevel){
                             std::deque<int> parents;
                             std::set<int> parentsProceed;
-                            if(part.startingLevel > proceedPartitionsInfo[bestPartitionId].startingLevel){
-                                part.startingLevel = proceedPartitionsInfo[bestPartitionId].startingLevel;
-                                for(const auto& idxParent : proceedPartitionsInfo[idxPart].idsParentPartitionsPredecessors){
+                            if(part.startingLevel > proceedPartitionsInfo[rightPart].startingLevel){
+                                part.startingLevel = proceedPartitionsInfo[rightPart].startingLevel;
+                                for(const auto& idxParent : proceedPartitionsInfo[leftPart].idsParentPartitionsPredecessors){
                                     if(part.startingLevel < proceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
                                         parents.push_back(idxParent);
                                         parentsProceed.insert(idxParent);
@@ -1262,7 +1269,7 @@ public:
                                 }
                             }
                             else{
-                                for(const auto& idxParent : proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
+                                for(const auto& idxParent : proceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors){
                                     if(part.startingLevel < proceedPartitionsInfo[idxParent].startingLevel && parentsProceed.find(idxParent) == parentsProceed.end()){
                                         parents.push_back(idxParent);
                                         parentsProceed.insert(idxParent);
@@ -1286,53 +1293,57 @@ public:
                             }
                         }
 
-                        part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[bestPartitionId].limiteLevel);
-                        part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.begin(),
-                                                                  proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.end());
-                        part.idsParentPartitionsSuccessors.erase(idxPart);
-                        part.idsParentPartitionsSuccessors.erase(bestPartitionId);
-                        part.idsParentPartitionsPredecessors.insert(proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors.begin(),
-                                                                    proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors.end());
-                        part.idsParentPartitionsPredecessors.erase(idxPart);
-                        part.idsParentPartitionsPredecessors.erase(bestPartitionId);
-                        part.idsNodes.insert(proceedPartitionsInfo[bestPartitionId].idsNodes.begin(),
-                                             proceedPartitionsInfo[bestPartitionId].idsNodes.end());
+                        part.limiteLevel = std::max(part.limiteLevel, proceedPartitionsInfo[rightPart].limiteLevel);
+                        part.idsParentPartitionsSuccessors.insert(proceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.begin(),
+                                                                  proceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.end());
+                        part.idsParentPartitionsSuccessors.erase(leftPart);
+                        part.idsParentPartitionsSuccessors.erase(rightPart);
+                        part.idsParentPartitionsPredecessors.insert(proceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.begin(),
+                                                                    proceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.end());
+                        part.idsParentPartitionsPredecessors.erase(leftPart);
+                        part.idsParentPartitionsPredecessors.erase(rightPart);
+                        part.idsNodes.insert(proceedPartitionsInfo[rightPart].idsNodes.begin(),
+                                             proceedPartitionsInfo[rightPart].idsNodes.end());
 
-                        for(Node* otherNode : proceedPartitionsInfo[bestPartitionId].idsNodes){
-                            otherNode->setPartitionId(idxPart);
+                        for(Node* otherNode : proceedPartitionsInfo[rightPart].idsNodes){
+                            otherNode->setPartitionId(leftPart);
                         }
 
-                        proceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors.clear();
-                        proceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors.clear();
-                        proceedPartitionsInfo[bestPartitionId].idsNodes.clear();
+                        proceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors.clear();
+                        proceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors.clear();
+                        proceedPartitionsInfo[rightPart].idsNodes.clear();
 
 
-                        for(auto idxNext : copyProceedPartitionsInfo[bestPartitionId].idsParentPartitionsSuccessors){
-                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(idxPart);
-                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(bestPartitionId);
+                        for(auto idxNext : copyProceedPartitionsInfo[rightPart].idsParentPartitionsSuccessors){
+                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.insert(leftPart);
+                            copyProceedPartitionsInfo[idxNext].idsParentPartitionsPredecessors.erase(rightPart);
                         }
-                        for(auto idxPrev : copyProceedPartitionsInfo[bestPartitionId].idsParentPartitionsPredecessors){
-                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(idxPart);
-                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(bestPartitionId);
+                        for(auto idxPrev : copyProceedPartitionsInfo[rightPart].idsParentPartitionsPredecessors){
+                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.insert(leftPart);
+                            copyProceedPartitionsInfo[idxPrev].idsParentPartitionsSuccessors.erase(rightPart);
                         }
 
-                        copyProceedPartitionsInfo[idxPart] = proceedPartitionsInfo[idxPart];
-                        copyProceedPartitionsInfo[bestPartitionId] = proceedPartitionsInfo[bestPartitionId];
+                        copyProceedPartitionsInfo[leftPart] = proceedPartitionsInfo[leftPart];
+                        copyProceedPartitionsInfo[rightPart] = proceedPartitionsInfo[rightPart];
 
                         hasChanged = true;
+                        currentExecutionTime = bestExecTime;
                         // Do not restart from here break;
                     }
                 }
             }
-        }
+        } while(hasChanged && (currentExecutionTime/previousExecutionTime) > 1.01);
 
         // Reset partition number
         std::vector<int> partitionsPermut(proceedPartitionsInfo.size(), -1);
         int permutPartitionCounter = 0;
-        for(Node* node : nodes){
-            if(partitionsPermut[node->getPartitionId()] == -1){
-                partitionsPermut[node->getPartitionId()] = (permutPartitionCounter++);
+        for(int idxPart = 0 ; idxPart < int(proceedPartitionsInfo.size()) ; ++idxPart){
+            if(proceedPartitionsInfo[idxPart].idsNodes.size()){
+                partitionsPermut[idxPart] = (permutPartitionCounter++);
             }
+        }
+
+        for(Node* node : nodes){
             node->setPartitionId(partitionsPermut[node->getPartitionId()]);
         }
     }

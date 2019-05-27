@@ -55,7 +55,7 @@ int main(int argc, char** argv){
             break;
         case 2:
             std::cout << "[INFO] use 2dgrid\n";
-            someDeps = Generator::Generate2DGrid(8);
+            someDeps = Generator::Generate2DGrid(16);
             break;
         case 3:
             std::cout << "[INFO] use doubletree\n";
@@ -76,7 +76,7 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 8;
-    const int partMaxSize = 10;
+    const int partMaxSize = 16;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
 
@@ -85,7 +85,7 @@ int main(int argc, char** argv){
                                         graph.partitionDiamond(clusterSize);
                                      }},
                                     {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 5, 1);
+                                        graph.partitionFinal(clusterSize, 3, 2);
                                      }},
                                     {"final-with-neighbor-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinalWithNeighborRefinement(clusterSize, 3, 2, clusterSize);

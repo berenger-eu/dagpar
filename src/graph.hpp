@@ -1358,6 +1358,75 @@ public:
         }
     }
 
+    void DepthFront(const int M){
+        std::vector<Node*> originalSources;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node);
+            }
+        }
+
+        int partitionid = 0;
+
+        std::vector<Node*> ready = originalSources;
+
+        std::vector<int> counterRelease(nodes.size(), 0);
+        while(ready.size()){
+            std::vector<Node*> depth = ready;
+            ready = std::vector<Node*>();
+
+            while(depth.size()){
+                Node* master = depth.back();
+                depth.pop_back();
+
+                if(master->getPartitionId() == -1){
+                    master->setPartitionId(partitionid);
+                    partitionid += 1;
+                }
+
+                std::vector<std::pair<Node*,int>> release;
+                int count = 0;
+
+                release.push_back(std::pair<Node*,int>(master,0));
+
+                while(count < M && release.size()){
+                    Node* next = release.back().first;
+                    release.pop_back();
+                    count += 1;
+
+                    assert(next->getPartitionId() == -1);
+                    next->setPartitionId(master->getPartitionId());
+
+                    // Add deps if released
+                    for(const auto& otherNode : next->getSuccessors()){
+                        counterRelease[otherNode->getId()] += 1;
+                        assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                        if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                            int countermaster = 0;
+
+                            for(const auto& pred : next->getPredecessors()){
+                                if(pred->getPartitionId() == master->getPartitionId()){
+                                    countermaster += 1;
+                                }
+                            }
+
+                            release.push_back(std::pair<Node*,int>(otherNode,countermaster));
+                        }
+                    }
+
+                    std::sort(release.begin(), release.end(), [](const std::pair<Node*,int>& p1, const std::pair<Node*,int>& p2){
+                        return p1.second > p2.second;
+                    });
+                }
+                for(int idx = 0 ; idx < int(release.size()) ; ++idx){
+                    depth.push_back(release[idx].first);
+                }
+            }
+            ready.insert(ready.end(), depth.begin(), depth.end());
+        }
+    }
+
     std::vector<int> getDistHistogram() const {
         std::vector<Node*> originalSources;
         for(auto& node : nodes){

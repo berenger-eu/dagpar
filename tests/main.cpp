@@ -76,7 +76,7 @@ int main(int argc, char** argv){
     //////////////////////////////////////////////////////////////////////////
 
     const int nbThreads = 8;
-    const int partMaxSize = 16;
+    const int partMaxSize = 10;
     const int partMinSize = partMaxSize;
     std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
 
@@ -85,13 +85,16 @@ int main(int argc, char** argv){
                                         graph.partitionDiamond(clusterSize);
                                      }},
                                     {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 3, 2);
+                                        graph.partitionFinal(clusterSize, 2, 2);
                                      }},
                                     {"final-with-neighbor-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinalWithNeighborRefinement(clusterSize, 3, 2, clusterSize);
                                      }},
                                     {"final-with-emulated-rafinement", [](Graph& graph, const int clusterSize){
                                         graph.partitionFinalWithEmulationRefinement(clusterSize, 3, 2, clusterSize, 0, nbThreads, 0.1, 0.2);
+                                     }},
+                                    {"DepthFront", [](Graph& graph, const int clusterSize){
+                                        graph.DepthFront(clusterSize);
                                      }}
                                     };
 

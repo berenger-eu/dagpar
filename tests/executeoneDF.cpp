@@ -165,7 +165,7 @@ int main(int argc, char** argv){
         timer.stop();
 
         if(exportDot){
-            aGraph.saveToDot("/tmp/agraph-" + methodName + ".dot");
+            aGraph.saveToDot("/tmp/agraph-" + std::to_string(idxGranularity) + "-" + methodName + ".dot");
         }
 
         Graph depGraph = aGraph.getPartitionGraph();

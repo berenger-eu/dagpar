@@ -180,7 +180,7 @@ int main(int argc, char** argv){
         std::cout << " - Time to partition with " << methodName << " : " << timer.getElapsed() << "\n";
 
         if(exportDot){
-            depGraph.saveToDot("/tmp/depgraph-" + methodName + ".dot");
+            aGraph.saveToDot("/tmp/agraph-" + std::to_string(idxGranularity) + "-" + methodName + ".dot");
         }
 
         double duration;
@@ -202,7 +202,7 @@ int main(int argc, char** argv){
             int h2 = std::max(1,int(idxGranularity/4.));
             double execFinal;
             double avgClusterSize;
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final"+std::to_string(h1)+"-"+std::to_string(h2), [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
@@ -219,7 +219,7 @@ int main(int argc, char** argv){
             h1 = std::max(1,int((idxGranularity+1)/2));
             h2 = std::max(1,int((idxGranularity+1)/2));
 
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final"+std::to_string(h1)+"-"+std::to_string(h2), [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);
@@ -236,7 +236,7 @@ int main(int argc, char** argv){
             h1 = std::max(1,int(idxGranularity/4.));
             h2 = std::max(1,int(idxGranularity*3./4.));
 
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final"+std::to_string(h1)+"-"+std::to_string(h2), [h1,h2](Graph& graph, const int clusterSize){
                 std::cout << " - h1 : " << h1 << std::endl;
                 std::cout << " - h2 : " << h2 << std::endl;
                 graph.partitionFinal(clusterSize, h1,h2);

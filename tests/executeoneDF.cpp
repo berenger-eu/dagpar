@@ -206,6 +206,8 @@ int main(int argc, char** argv){
                 bestGranularity = idxGranularity;
                 bestAvgClusterSize = avgClusterSize;
             }
+
+            idxGranularity += 1;
         }
     }
 

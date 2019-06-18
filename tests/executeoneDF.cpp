@@ -197,8 +197,9 @@ int main(int argc, char** argv){
         while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
             double execFinal;
             double avgClusterSize;
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "DF", [](Graph& graph, const int clusterSize){
-                graph.DepthFront(clusterSize);
+            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "G", [](Graph& graph, const int clusterSize){
+                //graph.DepthFront(clusterSize);
+                 graph.G(clusterSize);
              });
 
             if(execFinal < bestExecTime){

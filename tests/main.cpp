@@ -89,10 +89,13 @@ int main(int argc, char** argv){
                                      }},
                                     {"Gupdate", [](Graph& graph, const int clusterSize){
                                         graph.Gupdate(clusterSize);
+                                     }},
+                                    {"Gupdate2", [](Graph& graph, const int clusterSize){
+                                        graph.Gupdate2(clusterSize);
                                      }}
                                     };
 
-    for(int partMaxSize = 10 ; partMaxSize < 11 ; ++partMaxSize){
+    for(int partMaxSize = 6 ; partMaxSize < 7 ; ++partMaxSize){
 
         for(const auto& method : allPartitionMethods){
             std::cout << "=======================[" << method.first <<  "]======================================\n";

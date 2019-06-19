@@ -76,6 +76,7 @@ int main(int argc, char** argv){
 
 
     const bool exportDot = params.paramExist({"--export-dot", "-export-dot"});
+    const bool useUpdate = params.paramExist({"--update", "-update"});
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -197,9 +198,17 @@ int main(int argc, char** argv){
         while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
             double execFinal;
             double avgClusterSize;
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate", [](Graph& graph, const int clusterSize){
-                graph.Gupdate(clusterSize);
-             });
+            if(useUpdate){
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate2", [](Graph& graph, const int clusterSize){
+                    graph.Gupdate2(clusterSize);
+                 });
+            }
+            else{
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate", [](Graph& graph, const int clusterSize){
+                    graph.Gupdate(clusterSize);
+                 });
+            }
+
 
             if(execFinal < bestExecTime){
                 bestExecTime = execFinal;

@@ -1427,6 +1427,200 @@ public:
         }
     }
 
+    std::tuple<std::vector<int>,int> GCore2(const int M){
+        std::deque<Node*> originalSources;
+        for(auto& node : nodes){
+            node->setPartitionId(-1);
+            if(node->getPredecessors().size() == 0){
+                originalSources.push_back(node);
+            }
+        }
+
+        std::vector<int> maxDistFromTop(nodes.size(), -1);
+        {
+            std::deque<Node*> sources = originalSources;
+
+            for(auto& node : sources){
+                maxDistFromTop[node->getId()] = 0;
+            }
+
+            std::vector<int> counterRelease(nodes.size(), 0);
+            while(sources.size()){
+                Node* selectedNode = sources.back();
+                sources.pop_back();
+
+                // Add deps if released
+                for(const auto& otherNode : selectedNode->getSuccessors()){
+                    if(maxDistFromTop[otherNode->getId()] == -1){
+                        maxDistFromTop[otherNode->getId()] = maxDistFromTop[selectedNode->getId()] + 1;
+                    }
+                    else{
+                        maxDistFromTop[otherNode->getId()] = std::max(maxDistFromTop[selectedNode->getId()] + 1, maxDistFromTop[otherNode->getId()]);
+                    }
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        sources.push_back(otherNode);
+                    }
+                }
+            }
+        }
+
+        int partitionid = 0;
+
+        std::deque<Node*> ready = originalSources;
+
+        std::vector<int> counterPredMaster(nodes.size(), -1);
+        std::vector<int> countNextCommon(nodes.size(), -1);
+        std::vector<int> countPredPartCommon(nodes.size(), -1);
+
+        std::vector<int> counterRelease(nodes.size(), 0);
+        while(ready.size()){
+//            std::sort(ready.begin(), ready.end(), [&maxDistFromTop](const Node* n1, const Node* n2){
+//                return maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()];
+//            });
+
+            int idxToTake = 0;
+            for(int idxReady = 1; idxReady < int(ready.size()) ; ++idxReady){
+                if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]){
+                    idxToTake = idxReady;
+                }
+            }
+
+//            Node* master = ready.front();
+//            ready.pop_front();
+            Node* master = ready[idxToTake];
+            ready[idxToTake] = ready.back();
+            ready.pop_back();
+
+            std::set<Node*> boundaryNext;
+
+            for(const auto& otherNode : master->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    ready.push_back(otherNode);
+                }
+                else {
+                    boundaryNext.insert(otherNode);
+                }
+            }
+
+            std::set<int> partPrev;
+            for(const auto& otherNode : master->getPredecessors()){
+                partPrev.insert(otherNode->getPartitionId());
+            }
+
+            assert(master->getPartitionId() == -1);
+            master->setPartitionId(partitionid);
+            partitionid += 1;
+
+
+            for(int idxReady = 0 ; idxReady < int(ready.size()) ; ++idxReady){
+                counterPredMaster[ready[idxReady]->getId()] = 0;
+                for(const auto& pred : ready[idxReady]->getPredecessors()){
+                    if(pred->getPartitionId() == master->getPartitionId()){
+                        counterPredMaster[ready[idxReady]->getId()] += 1;
+                    }
+                }
+            }
+
+            int count = 1;
+            while(count < M && ready.size()){
+                for(int idxReady = 0 ; idxReady < int(ready.size()) ; ++idxReady){
+                    countNextCommon[ready[idxReady]->getId()] = 0;
+                    for(const auto& next : ready[idxReady]->getSuccessors()){
+                        if(boundaryNext.find(next) != boundaryNext.end()){
+                            countNextCommon[ready[idxReady]->getId()] += 1;
+                        }
+                    }
+                    countPredPartCommon[ready[idxReady]->getId()] = 0;
+                    for(const auto& pred : ready[idxReady]->getPredecessors()){
+                        if(partPrev.find(pred->getPartitionId()) != partPrev.end()){
+                            countPredPartCommon[ready[idxReady]->getId()] += 1;
+                        }
+                    }
+                }
+
+                std::sort(ready.begin(), ready.end(), [&counterPredMaster,&countNextCommon,&countPredPartCommon,&maxDistFromTop](const Node* n1, const Node* n2){
+                    return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
+                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                                && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
+                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
+                                && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
+                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
+                                && maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()])
+                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
+                                && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+                                && n1->getId() < n2->getId());
+                });
+
+
+                Node* next = ready.front();
+
+                // Modif 1
+                if(counterPredMaster[next->getId()] == 0
+                        && countNextCommon[next->getId()] == 0
+                        && countPredPartCommon[next->getId()] == 0
+                        /*&& maxDistFromTop[next->getId()] != maxDistFromTop[master->getId()]*/){
+                    break;
+                }
+                // End modif 1
+
+                ready.pop_front();
+                count += 1;
+
+                assert(next->getPartitionId() == -1);
+                next->setPartitionId(master->getPartitionId());
+
+                boundaryNext.erase(next);
+
+                for(const auto& otherNode : next->getPredecessors()){
+                    if(otherNode->getPartitionId() != master->getPartitionId()){
+                        partPrev.insert(otherNode->getPartitionId());
+                    }
+                }
+                // Add deps if released
+                for(const auto& otherNode : next->getSuccessors()){
+                    boundaryNext.insert(otherNode);
+
+                    counterRelease[otherNode->getId()] += 1;
+                    assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                    if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                        counterPredMaster[otherNode->getId()] = 0;
+                        for(const auto& pred : otherNode->getPredecessors()){
+                            if(pred->getPartitionId() == master->getPartitionId()){
+                                counterPredMaster[otherNode->getId()] += 1;
+                            }
+                        }
+
+                        ready.push_back(otherNode);
+//                        ready.insert
+//                                (
+//                                   std::upper_bound( ready.begin(), ready.end(), otherNode, [&counterPredMaster,&maxDistFromTop](const Node* toInsert, const Node* n1){
+//                                        return !(counterPredMaster[n1->getId()] > counterPredMaster[toInsert->getId()]
+//                                                    || (counterPredMaster[n1->getId()] == counterPredMaster[toInsert->getId()]
+//                                                        && maxDistFromTop[n1->getId()] < maxDistFromTop[toInsert->getId()])
+//                                                    || (counterPredMaster[n1->getId()] == counterPredMaster[toInsert->getId()]
+//                                                    && maxDistFromTop[n1->getId()] == maxDistFromTop[toInsert->getId()]
+//                                                    && n1->getId() < toInsert->getId()));
+//                                        } ),
+//                                   otherNode
+//                                );
+                    }
+                }
+            }
+        }
+
+        return std::make_tuple(std::move(maxDistFromTop), partitionid);
+    }
+
     std::tuple<std::vector<int>,int> GCore(const int M, const bool update){
         std::deque<Node*> originalSources;
         for(auto& node : nodes){
@@ -1529,7 +1723,7 @@ public:
 
                 // Modif 1
                 if(update){
-                    if(counterPredMaster[next->getId()] == 0 && maxDistFromTop[next->getId()] != maxDistFromTop[master->getId()]){
+                    if(counterPredMaster[next->getId()] == 0 /*&& maxDistFromTop[next->getId()] != maxDistFromTop[master->getId()]*/){
                         break;
                     }
                 }
@@ -1581,6 +1775,10 @@ public:
 
     void Gupdate(const int M){
         GCore(M, true);
+    }
+
+    void Gupdate2(const int M){
+        GCore2(M);
     }
 
     void GPartitionWithEmulationRefinement(const int M,

@@ -1477,19 +1477,15 @@ public:
 
         std::vector<int> counterRelease(nodes.size(), 0);
         while(ready.size()){
-//            std::sort(ready.begin(), ready.end(), [&maxDistFromTop](const Node* n1, const Node* n2){
-//                return maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()];
-//            });
-
             int idxToTake = 0;
             for(int idxReady = 1; idxReady < int(ready.size()) ; ++idxReady){
-                if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]){
+                if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]
+                        || (maxDistFromTop[ready[idxReady]->getId()] == maxDistFromTop[ready[idxToTake]->getId()]
+                            && ready[idxReady]->getId() < ready[idxToTake]->getId())){
                     idxToTake = idxReady;
                 }
             }
 
-//            Node* master = ready.front();
-//            ready.pop_front();
             Node* master = ready[idxToTake];
             ready[idxToTake] = ready.back();
             ready.pop_back();
@@ -1543,8 +1539,8 @@ public:
                     }
                 }
 
-                std::sort(ready.begin(), ready.end(), [&counterPredMaster,&countNextCommon,&countPredPartCommon,&maxDistFromTop](const Node* n1, const Node* n2){
-                    return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
+                const long int idxNext = std::distance(ready.begin(), std::min_element(ready.begin(), ready.end(),[&counterPredMaster,&countNextCommon,&countPredPartCommon,&maxDistFromTop](const Node* n1, const Node* n2){
+                     return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
                             || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
                                 && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
                             || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
@@ -1559,21 +1555,19 @@ public:
                                 && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
                                 && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
                                 && n1->getId() < n2->getId());
-                });
+                }));
 
+                Node* next = ready[idxNext];
 
-                Node* next = ready.front();
-
-                // Modif 1
                 if(counterPredMaster[next->getId()] == 0
                         && countNextCommon[next->getId()] == 0
-                        && countPredPartCommon[next->getId()] == 0
-                        /*&& maxDistFromTop[next->getId()] != maxDistFromTop[master->getId()]*/){
+                        && countPredPartCommon[next->getId()] == 0){
                     break;
                 }
-                // End modif 1
 
-                ready.pop_front();
+                ready[idxNext] = ready.back();
+                ready.pop_back();
+
                 count += 1;
 
                 assert(next->getPartitionId() == -1);
@@ -1601,18 +1595,6 @@ public:
                         }
 
                         ready.push_back(otherNode);
-//                        ready.insert
-//                                (
-//                                   std::upper_bound( ready.begin(), ready.end(), otherNode, [&counterPredMaster,&maxDistFromTop](const Node* toInsert, const Node* n1){
-//                                        return !(counterPredMaster[n1->getId()] > counterPredMaster[toInsert->getId()]
-//                                                    || (counterPredMaster[n1->getId()] == counterPredMaster[toInsert->getId()]
-//                                                        && maxDistFromTop[n1->getId()] < maxDistFromTop[toInsert->getId()])
-//                                                    || (counterPredMaster[n1->getId()] == counterPredMaster[toInsert->getId()]
-//                                                    && maxDistFromTop[n1->getId()] == maxDistFromTop[toInsert->getId()]
-//                                                    && n1->getId() < toInsert->getId()));
-//                                        } ),
-//                                   otherNode
-//                                );
                     }
                 }
             }
@@ -1669,19 +1651,15 @@ public:
 
         std::vector<int> counterRelease(nodes.size(), 0);
         while(ready.size()){
-//            std::sort(ready.begin(), ready.end(), [&maxDistFromTop](const Node* n1, const Node* n2){
-//                return maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()];
-//            });
-
             int idxToTake = 0;
             for(int idxReady = 1; idxReady < int(ready.size()) ; ++idxReady){
-                if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]){
+                if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]
+                        || (maxDistFromTop[ready[idxReady]->getId()] == maxDistFromTop[ready[idxToTake]->getId()]
+                            && ready[idxReady]->getId() < ready[idxToTake]->getId())){
                     idxToTake = idxReady;
                 }
             }
 
-//            Node* master = ready.front();
-//            ready.pop_front();
             Node* master = ready[idxToTake];
             ready[idxToTake] = ready.back();
             ready.pop_back();
@@ -1747,7 +1725,6 @@ public:
                             }
                         }
 
-                        //ready.push_back(otherNode);
                         ready.insert
                                 (
                                    std::upper_bound( ready.begin(), ready.end(), otherNode, [&counterPredMaster,&maxDistFromTop](const Node* toInsert, const Node* n1){
@@ -1781,13 +1758,9 @@ public:
         GCore2(M);
     }
 
-    void GPartitionWithEmulationRefinement(const int M,
+    void GPartitionWithEmulationRefinementCore(const int /*M*/, const std::vector<int>& maxDistFromTop, const int partitionid,
                                            const int maxSizeAfterRefinement, const double inOverheadPerTask,
                                            const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
-        std::vector<int> maxDistFromTop;
-        int partitionid;
-        std::tie(maxDistFromTop,partitionid) = GCore(M, true);
-
         std::vector<InfoPartition> proceedPartitionsInfo;
 
         proceedPartitionsInfo.resize(partitionid);
@@ -2070,6 +2043,30 @@ public:
         for(Node* node : nodes){
             node->setPartitionId(partitionsPermut[node->getPartitionId()]);
         }
+    }
+
+    void GPartitionWithEmulationRefinement(const int M,
+                                           const int maxSizeAfterRefinement, const double inOverheadPerTask,
+                                           const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
+        std::vector<int> maxDistFromTop;
+        int partitionid;
+        std::tie(maxDistFromTop,partitionid) = GCore(M, true);
+
+        GPartitionWithEmulationRefinementCore(M, std::move(maxDistFromTop), partitionid,
+                                              maxSizeAfterRefinement, inOverheadPerTask,
+                                              inNbWorkers, inPopOverhead,inPushOverhead);
+    }
+
+    void GPartitionWithEmulationRefinement2(const int M,
+                                           const int maxSizeAfterRefinement, const double inOverheadPerTask,
+                                           const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
+        std::vector<int> maxDistFromTop;
+        int partitionid;
+        std::tie(maxDistFromTop,partitionid) = GCore2(M);
+
+        GPartitionWithEmulationRefinementCore(M, std::move(maxDistFromTop), partitionid,
+                                              maxSizeAfterRefinement, inOverheadPerTask,
+                                              inNbWorkers, inPopOverhead,inPushOverhead);
     }
 
     std::vector<int> getDistHistogram() const {

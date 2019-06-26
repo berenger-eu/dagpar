@@ -1489,6 +1489,9 @@ public:
             for(int idxReady = 1; idxReady < int(ready.size()) ; ++idxReady){
                 if(maxDistFromTop[ready[idxReady]->getId()] < maxDistFromTop[ready[idxToTake]->getId()]
                         || (maxDistFromTop[ready[idxReady]->getId()] == maxDistFromTop[ready[idxToTake]->getId()]
+                            && ready[idxReady]->getPredecessors().size() > ready[idxToTake]->getPredecessors().size())
+                        || (maxDistFromTop[ready[idxReady]->getId()] == maxDistFromTop[ready[idxToTake]->getId()]
+                            && ready[idxReady]->getPredecessors().size() == ready[idxToTake]->getPredecessors().size()
                             && ready[idxReady]->getId() < ready[idxToTake]->getId())){
                     idxToTake = idxReady;
                 }

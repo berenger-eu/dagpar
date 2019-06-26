@@ -1476,6 +1476,14 @@ public:
         std::vector<int> countPredPartCommon(nodes.size(), -1);
 
         std::vector<int> counterRelease(nodes.size(), 0);
+
+//        long int countcounterPredMaster = 0;
+//        long int countcountNextCommon = 0;
+//        long int countcountPredPartCommon = 0;
+//        long int avgcounterPredMaster = 0;
+//        long int avgcountNextCommon = 0;
+//        long int avgcountPredPartCommon = 0;
+
         while(ready.size()){
             int idxToTake = 0;
             for(int idxReady = 1; idxReady < int(ready.size()) ; ++idxReady){
@@ -1540,30 +1548,67 @@ public:
                 }
 
                 const long int idxNext = std::distance(ready.begin(), std::min_element(ready.begin(), ready.end(),[&counterPredMaster,&countNextCommon,&countPredPartCommon,&maxDistFromTop](const Node* n1, const Node* n2){
-                     return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
+//                     return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
+//                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+//                                && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
+//                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+//                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+//                                && maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()])
+////                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+////                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+////                                && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+////                                && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
+//                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+//                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+//                                && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+////                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
+//                                && n1->getId() < n2->getId());
+//                    return counterPredMaster[n1->getId()]+countPredPartCommon[n1->getId()] > counterPredMaster[n2->getId()]+countPredPartCommon[n2->getId()]
+//                           || (counterPredMaster[n1->getId()]+countPredPartCommon[n1->getId()] == counterPredMaster[n2->getId()]+countPredPartCommon[n2->getId()]
+//                               && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
+//                           || (counterPredMaster[n1->getId()]+countPredPartCommon[n1->getId()] == counterPredMaster[n2->getId()]+countPredPartCommon[n2->getId()]
+//                               && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+//                               && maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()])
+//                           || (counterPredMaster[n1->getId()]+countPredPartCommon[n1->getId()] == counterPredMaster[n2->getId()]+countPredPartCommon[n2->getId()]
+//                               && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+//                               && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+//                               && n1->getId() < n2->getId());
+                    return counterPredMaster[n1->getId()] > counterPredMaster[n2->getId()]
+                           || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                               && maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()])
+                           || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                               && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+                               && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
+                           || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+                               && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+                               && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+                               && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
                             || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
-                                && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
-                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
-                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
-                                && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
-                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
-                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
-                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
-                                && maxDistFromTop[n1->getId()] < maxDistFromTop[n2->getId()])
-                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
-                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
-                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
                                 && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+                                && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
                                 && n1->getId() < n2->getId());
                 }));
 
                 Node* next = ready[idxNext];
 
-                if(counterPredMaster[next->getId()] == 0
-                        && countNextCommon[next->getId()] == 0
-                        && countPredPartCommon[next->getId()] == 0){
-                    break;
-                }
+//                if(counterPredMaster[next->getId()] == 0) countcounterPredMaster += 1;
+//                if(countNextCommon[next->getId()] == 0 == 0) countcountNextCommon += 1;
+//                if(countPredPartCommon[next->getId()] == 0 == 0) countcountPredPartCommon += 1;
+
+//                avgcounterPredMaster += counterPredMaster[next->getId()];
+//                avgcountNextCommon += countNextCommon[next->getId()];
+//                avgcountPredPartCommon += countPredPartCommon[next->getId()];
+
+//                if(counterPredMaster[next->getId()] == 0
+//                        && countNextCommon[next->getId()] == 0
+//                        /*&& countPredPartCommon[next->getId()] == 0*/){
+//                    break;
+//                }
+//                if(counterPredMaster[next->getId()] == 0
+//                        && countNextCommon[next->getId()] == 0){
+//                    break;
+//                }
 
                 ready[idxNext] = ready.back();
                 ready.pop_back();
@@ -1573,7 +1618,7 @@ public:
                 assert(next->getPartitionId() == -1);
                 next->setPartitionId(master->getPartitionId());
 
-                boundaryNext.erase(next);
+                assert(boundaryNext.find(next) == boundaryNext.end());
 
                 for(const auto& otherNode : next->getPredecessors()){
                     if(otherNode->getPartitionId() != master->getPartitionId()){
@@ -1582,8 +1627,6 @@ public:
                 }
                 // Add deps if released
                 for(const auto& otherNode : next->getSuccessors()){
-                    boundaryNext.insert(otherNode);
-
                     counterRelease[otherNode->getId()] += 1;
                     assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
                     if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
@@ -1595,10 +1638,20 @@ public:
                         }
 
                         ready.push_back(otherNode);
+                        boundaryNext.erase(otherNode);
+                    }
+                    else{
+                        boundaryNext.insert(otherNode);
                     }
                 }
             }
         }
+//        std::cout << "countcounterPredMaster = " << countcounterPredMaster << std::endl;
+//        std::cout << "countcountNextCommon = " << countcountNextCommon << std::endl;
+//        std::cout << "countcountPredPartCommon = " << countcountPredPartCommon << std::endl;
+//        std::cout << "avgcounterPredMaster = " << avgcounterPredMaster/double(nodes.size()) << std::endl;
+//        std::cout << "avgcountNextCommon = " << avgcountNextCommon/double(nodes.size()) << std::endl;
+//        std::cout << "avgcountPredPartCommon = " << avgcountPredPartCommon/double(nodes.size()) << std::endl;
 
         return std::make_tuple(std::move(maxDistFromTop), partitionid);
     }

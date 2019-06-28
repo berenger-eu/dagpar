@@ -1582,14 +1582,14 @@ public:
                            || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
                                && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
                                && countNextCommon[n1->getId()] > countNextCommon[n2->getId()])
-                           || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
-                               && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
-                               && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
-                               && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
+//                           || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
+//                               && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
+//                               && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
+//                               && countPredPartCommon[n1->getId()] > countPredPartCommon[n2->getId()])
                             || (counterPredMaster[n1->getId()] == counterPredMaster[n2->getId()]
                                 && maxDistFromTop[n1->getId()] == maxDistFromTop[n2->getId()]
                                 && countNextCommon[n1->getId()] == countNextCommon[n2->getId()]
-                                && countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
+                                //&& countPredPartCommon[n1->getId()] == countPredPartCommon[n2->getId()]
                                 && n1->getId() < n2->getId());
                 }));
 
@@ -1609,7 +1609,8 @@ public:
 //                    break;
 //                }
 //                if(counterPredMaster[next->getId()] == 0
-//                        && countNextCommon[next->getId()] == 0){
+//                        && countNextCommon[next->getId()] == 0
+//                        && countPredPartCommon[next->getId()] == 0){
 //                    break;
 //                }
 

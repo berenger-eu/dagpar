@@ -224,18 +224,18 @@ int main(int argc, char** argv){
     std::cout << " - Best duration : " << bestExecTime << std::endl;
     std::cout << " - Best avg cluster size : " << bestAvgClusterSize << std::endl;
 
-    if(nbNodes/bestAvgClusterSize <= 10000){
-        if(useUpdate){
-            doItFunc(bestGranularity, "final-with-emulated-rafinement2", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-                graph.GPartitionWithEmulationRefinement2(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-             });
-        }
-        else{
-            doItFunc(bestGranularity, "final-with-emulated-rafinement", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-                graph.GPartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-             });
-        }
-    }
+//    if(nbNodes/bestAvgClusterSize <= 10000){
+//        if(useUpdate){
+//            doItFunc(bestGranularity, "final-with-emulated-rafinement2", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+//                graph.GPartitionWithEmulationRefinement2(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+//             });
+//        }
+//        else{
+//            doItFunc(bestGranularity, "final-with-emulated-rafinement", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+//                graph.GPartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+//             });
+//        }
+//    }
 
     return 0;
 }

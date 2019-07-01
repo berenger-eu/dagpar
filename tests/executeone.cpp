@@ -77,6 +77,7 @@ int main(int argc, char** argv){
 
     const bool exportDot = params.paramExist({"--export-dot", "-export-dot"});
     const bool useUpdate = params.paramExist({"--update", "-update"});
+    const bool useStop = params.paramExist({"--stop", "-stop"});
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -199,9 +200,16 @@ int main(int argc, char** argv){
             double execFinal;
             double avgClusterSize;
             if(useUpdate){
-                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate2", [](Graph& graph, const int clusterSize){
-                    graph.Gupdate2(clusterSize);
-                 });
+                if(!useStop){
+                    std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate2", [](Graph& graph, const int clusterSize){
+                        graph.Gupdate2(clusterSize, false);
+                     });
+                }
+                else{
+                    std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate3", [](Graph& graph, const int clusterSize){
+                        graph.Gupdate2(clusterSize, true);
+                     });
+                }
             }
             else{
                 std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate", [](Graph& graph, const int clusterSize){

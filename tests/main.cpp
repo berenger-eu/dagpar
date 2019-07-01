@@ -91,8 +91,11 @@ int main(int argc, char** argv){
                                         graph.Gupdate(clusterSize);
                                      }},
                                     {"Gupdate2", [](Graph& graph, const int clusterSize){
-                                        graph.Gupdate2(clusterSize);
-                                     }}
+                                        graph.Gupdate2(clusterSize, false);
+                                     }},
+                                        {"Gupdate3", [](Graph& graph, const int clusterSize){
+                                            graph.Gupdate2(clusterSize, true);
+                                         }}
                                     };
 
     for(int partMaxSize = 6 ; partMaxSize < 7 ; ++partMaxSize){

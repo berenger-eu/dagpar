@@ -1427,7 +1427,7 @@ public:
         }
     }
 
-    std::tuple<std::vector<int>,int> GCore2(const int M){
+    std::tuple<std::vector<int>,int> GCore2(const int M, const bool stop){
         std::deque<Node*> originalSources;
         for(auto& node : nodes){
             node->setPartitionId(-1);
@@ -1603,11 +1603,13 @@ public:
 //                avgcountNextCommon += countNextCommon[next->getId()];
 //                avgcountPredPartCommon += countPredPartCommon[next->getId()];
 
-//                if(counterPredMaster[next->getId()] == 0
-//                        && countNextCommon[next->getId()] == 0
-//                        /*&& countPredPartCommon[next->getId()] == 0*/){
-//                    break;
-//                }
+                if(stop){
+                    if(counterPredMaster[next->getId()] == 0
+                            && countNextCommon[next->getId()] == 0
+                            /*&& countPredPartCommon[next->getId()] == 0*/){
+                        break;
+                    }
+                }
 //                if(counterPredMaster[next->getId()] == 0
 //                        && countNextCommon[next->getId()] == 0
 //                        && countPredPartCommon[next->getId()] == 0){
@@ -1811,8 +1813,8 @@ public:
         GCore(M, true);
     }
 
-    void Gupdate2(const int M){
-        GCore2(M);
+    void Gupdate2(const int M, const bool stop){
+        GCore2(M, stop);
     }
 
     void GPartitionWithEmulationRefinementCore(const int /*M*/, const std::vector<int>& maxDistFromTop, const int partitionid,
@@ -2119,7 +2121,7 @@ public:
                                            const int inNbWorkers, const double inPopOverhead, const double inPushOverhead){
         std::vector<int> maxDistFromTop;
         int partitionid;
-        std::tie(maxDistFromTop,partitionid) = GCore2(M);
+        std::tie(maxDistFromTop,partitionid) = GCore2(M, false);
 
         GPartitionWithEmulationRefinementCore(M, std::move(maxDistFromTop), partitionid,
                                               maxSizeAfterRefinement, inOverheadPerTask,

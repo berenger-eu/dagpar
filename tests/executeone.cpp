@@ -28,6 +28,7 @@ int main(int argc, char** argv){
                                     "[HELP] --oppu [overhead per push, % of the total execution]\n"
                                     "[HELP] --oppo [overhead per pop, % of the total execution]\n"
                                     "[HELP] --export-dot (optional, to export the dot files)\n"
+                                    "[HELP] --strategy [none,stop,update]"
                                     "[HELP] Example:\n"
                                     "[HELP] ./executeone --filename ../data/chukrut_disque.dot --nbt 5 --opt 0 --oppu 0 --oppo 0 --cs 10 --h1 3 --h2 2\n";
 
@@ -74,10 +75,20 @@ int main(int argc, char** argv){
     std::cout << "overheadPerPush = " << overheadPerPush << std::endl;
     std::cout << "overheadPerPop = " << overheadPerPop << std::endl;
 
-
     const bool exportDot = params.paramExist({"--export-dot", "-export-dot"});
-    const bool useUpdate = params.paramExist({"--update", "-update"});
-    const bool useStop = params.paramExist({"--stop", "-stop"});
+
+    const std::string strategy = params.getStr({"--strategy", "--s", "-strategy", "-s"});
+    if(params.parseHasFailed()){
+        std::cout << "[HELP] Invalid command at strategy.\n" << helpContent;
+        return 1;
+    }
+
+    std::cout << "strategy = " << strategy << std::endl;
+
+    if(strategy != "none" && strategy != "stop" && strategy != "update"){
+        std::cout << "[HELP] Invalid strategy " << strategy << ".\n" << helpContent;
+        return 1;
+    }
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -199,24 +210,22 @@ int main(int argc, char** argv){
         while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
             double execFinal;
             double avgClusterSize;
-            if(useUpdate){
-                if(!useStop){
-                    std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate2", [](Graph& graph, const int clusterSize){
-                        graph.Gupdate2(clusterSize, false);
-                     });
-                }
-                else{
-                    std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate3", [](Graph& graph, const int clusterSize){
-                        graph.Gupdate2(clusterSize, true);
-                     });
-                }
-            }
-            else{
-                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "Gupdate", [](Graph& graph, const int clusterSize){
-                    graph.Gupdate(clusterSize);
+            if(strategy == "update"){
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "update", [](Graph& graph, const int clusterSize){
+                    graph.GUpdate(clusterSize);
                  });
             }
-
+            else if(strategy == "stop"){
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "stop", [](Graph& graph, const int clusterSize){
+                    graph.GStop(clusterSize);
+                 });
+            }
+            else{
+                assert(strategy == "none");
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "none", [](Graph& graph, const int clusterSize){
+                    graph.G(clusterSize);
+                 });
+            }
 
             if(execFinal < bestExecTime){
                 bestExecTime = execFinal;
@@ -232,18 +241,18 @@ int main(int argc, char** argv){
     std::cout << " - Best duration : " << bestExecTime << std::endl;
     std::cout << " - Best avg cluster size : " << bestAvgClusterSize << std::endl;
 
-//    if(nbNodes/bestAvgClusterSize <= 10000){
-//        if(useUpdate){
-//            doItFunc(bestGranularity, "final-with-emulated-rafinement2", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-//                graph.GPartitionWithEmulationRefinement2(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-//             });
-//        }
-//        else{
-//            doItFunc(bestGranularity, "final-with-emulated-rafinement", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-//                graph.GPartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-//             });
-//        }
-//    }
+    if(nbNodes/bestAvgClusterSize <= 8000){
+        if(strategy == "update"){
+            doItFunc(bestGranularity, "update-with-emulated-rafinement-", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                graph.GUpdatePartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+             });
+        }
+        else if(strategy == "stop"){
+            doItFunc(bestGranularity, "stop-with-emulated-rafinement", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                graph.GStopPartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+             });
+        }
+    }
 
     return 0;
 }

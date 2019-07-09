@@ -78,24 +78,15 @@ int main(int argc, char** argv){
     const int nbThreads = 40;
 
     const std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods= {
-                                    {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 3, 2);
-                                     }},
-                                    {"DepthFront", [](Graph& graph, const int clusterSize){
-                                        graph.DepthFront(clusterSize);
-                                     }},
                                     {"G", [](Graph& graph, const int clusterSize){
                                         graph.G(clusterSize);
                                      }},
-                                    {"Gupdate", [](Graph& graph, const int clusterSize){
-                                        graph.Gupdate(clusterSize);
+                                    {"GUpdate", [](Graph& graph, const int clusterSize){
+                                        graph.GUpdate(clusterSize);
                                      }},
-                                    {"Gupdate2", [](Graph& graph, const int clusterSize){
-                                        graph.Gupdate2(clusterSize, false);
-                                     }},
-                                        {"Gupdate3", [](Graph& graph, const int clusterSize){
-                                            graph.Gupdate2(clusterSize, true);
-                                         }}
+                                    {"GStop", [](Graph& graph, const int clusterSize){
+                                        graph.GStop(clusterSize);
+                                     }}
                                     };
 
     for(int partMaxSize = 6 ; partMaxSize < 7 ; ++partMaxSize){

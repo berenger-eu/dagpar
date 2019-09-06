@@ -270,24 +270,6 @@ class Graph{
             ready[idxToTake] = ready.back();
             ready.pop_back();
 
-            std::set<Node*> boundaryNext;
-
-            for(const auto& otherNode : master->getSuccessors()){
-                counterRelease[otherNode->getId()] += 1;
-                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
-                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
-                    ready.push_back(otherNode);
-                }
-                else {
-                    boundaryNext.insert(otherNode);
-                }
-            }
-
-            std::set<int> partPrev;
-            for(const auto& otherNode : master->getPredecessors()){
-                partPrev.insert(otherNode->getPartitionId());
-            }
-
             assert(master->getPartitionId() == -1);
             master->setPartitionId(partitionid);
             partitionid += 1;
@@ -295,12 +277,28 @@ class Graph{
 
             for(int idxReady = 0 ; idxReady < int(ready.size()) ; ++idxReady){
                 counterPredMaster[ready[idxReady]->getId()] = 0;
-                for(const auto& pred : ready[idxReady]->getPredecessors()){
-                    if(pred->getPartitionId() == master->getPartitionId()){
-                        counterPredMaster[ready[idxReady]->getId()] += 1;
-                    }
+            }
+
+            std::set<Node*> boundaryNext;
+
+            for(const auto& otherNode : master->getSuccessors()){
+                counterRelease[otherNode->getId()] += 1;
+                assert(counterRelease[otherNode->getId()] <= int(otherNode->getPredecessors().size()));
+                if(counterRelease[otherNode->getId()] == int(otherNode->getPredecessors().size())){
+                    ready.push_back(otherNode);
+
+                    counterPredMaster[otherNode->getId()] = 1;
+                }
+                else {
+                    boundaryNext.insert(otherNode);
                 }
             }
+
+//            std::set<int> partPrev;
+//            for(const auto& otherNode : master->getPredecessors()){
+//                partPrev.insert(otherNode->getPartitionId());
+//            }
+
 
             int count = 1;
             while(count < M && ready.size()){
@@ -345,11 +343,11 @@ class Graph{
 
                 assert(boundaryNext.find(next) == boundaryNext.end());
 
-                for(const auto& otherNode : next->getPredecessors()){
-                    if(otherNode->getPartitionId() != master->getPartitionId()){
-                        partPrev.insert(otherNode->getPartitionId());
-                    }
-                }
+//                for(const auto& otherNode : next->getPredecessors()){
+//                    if(otherNode->getPartitionId() != master->getPartitionId()){
+//                        partPrev.insert(otherNode->getPartitionId());
+//                    }
+//                }
                 // Add deps if released
                 for(const auto& otherNode : next->getSuccessors()){
                     counterRelease[otherNode->getId()] += 1;

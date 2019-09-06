@@ -28,6 +28,7 @@ int main(int argc, char** argv){
                                     "[HELP] --oppu [overhead per push, % of the total execution]\n"
                                     "[HELP] --oppo [overhead per pop, % of the total execution]\n"
                                     "[HELP] --export-dot (optional, to export the dot files)\n"
+                                    "[HELP] --strategy [none,stop,update]"
                                     "[HELP] Example:\n"
                                     "[HELP] ./executeone --filename ../data/chukrut_disque.dot --nbt 5 --opt 0 --oppu 0 --oppo 0 --cs 10 --h1 3 --h2 2\n";
 
@@ -74,8 +75,20 @@ int main(int argc, char** argv){
     std::cout << "overheadPerPush = " << overheadPerPush << std::endl;
     std::cout << "overheadPerPop = " << overheadPerPop << std::endl;
 
-
     const bool exportDot = params.paramExist({"--export-dot", "-export-dot"});
+
+    const std::string strategy = params.getStr({"--strategy", "--s", "-strategy", "-s"});
+    if(params.parseHasFailed()){
+        std::cout << "[HELP] Invalid command at strategy.\n" << helpContent;
+        return 1;
+    }
+
+    std::cout << "strategy = " << strategy << std::endl;
+
+    if(strategy != "none" && strategy != "stop" && strategy != "update"){
+        std::cout << "[HELP] Invalid strategy " << strategy << ".\n" << helpContent;
+        return 1;
+    }
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -165,7 +178,7 @@ int main(int argc, char** argv){
         timer.stop();
 
         if(exportDot){
-            aGraph.saveToDot("/tmp/agraph-" + methodName + ".dot");
+            aGraph.saveToDot("/tmp/agraph-" + std::to_string(idxGranularity) + "-" + methodName + ".dot");
         }
 
         Graph depGraph = aGraph.getPartitionGraph();
@@ -192,92 +205,54 @@ int main(int argc, char** argv){
         return std::make_tuple(duration, double(aGraph.getNbNodes())/double(depGraph.getNbNodes()));
     };
 
-    int bestH1 = 0;
-    int bestH2 = 0;
-
     {
         int idxGranularity = 2;
         while(idxGranularity <= (bestGranularity+1)*2 && idxGranularity <= nbNodes){
-            int h1 = std::max(1,int(idxGranularity*3./4.));
-            int h2 = std::max(1,int(idxGranularity/4.));
             double execFinal;
             double avgClusterSize;
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-                std::cout << " - h1 : " << h1 << std::endl;
-                std::cout << " - h2 : " << h2 << std::endl;
-                graph.partitionFinal(clusterSize, h1,h2);
-             });
+            if(strategy == "update"){
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "update", [](Graph& graph, const int clusterSize){
+                    graph.GUpdate(clusterSize);
+                 });
+            }
+            else if(strategy == "stop"){
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "stop", [](Graph& graph, const int clusterSize){
+                    graph.GStop(clusterSize);
+                 });
+            }
+            else{
+                assert(strategy == "none");
+                std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "none", [](Graph& graph, const int clusterSize){
+                    graph.G(clusterSize);
+                 });
+            }
 
             if(execFinal < bestExecTime){
                 bestExecTime = execFinal;
                 bestGranularity = idxGranularity;
-                bestH1 = h1;
-                bestH2 = h2;
                 bestAvgClusterSize = avgClusterSize;
             }
 
-            h1 = std::max(1,int((idxGranularity+1)/2));
-            h2 = std::max(1,int((idxGranularity+1)/2));
-
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-                std::cout << " - h1 : " << h1 << std::endl;
-                std::cout << " - h2 : " << h2 << std::endl;
-                graph.partitionFinal(clusterSize, h1,h2);
-             });
-
-            if(execFinal < bestExecTime){
-                bestExecTime = execFinal;
-                bestGranularity = idxGranularity;
-                bestH1 = h1;
-                bestH2 = h2;
-                bestAvgClusterSize = avgClusterSize;
-            }
-
-            h1 = std::max(1,int(idxGranularity/4.));
-            h2 = std::max(1,int(idxGranularity*3./4.));
-
-            std::tie(execFinal, avgClusterSize) = doItFunc(idxGranularity, "final", [h1,h2](Graph& graph, const int clusterSize){
-                std::cout << " - h1 : " << h1 << std::endl;
-                std::cout << " - h2 : " << h2 << std::endl;
-                graph.partitionFinal(clusterSize, h1,h2);
-             });
-
-            if(execFinal < bestExecTime){
-                bestExecTime = execFinal;
-                bestGranularity = idxGranularity;
-                bestH1 = h1;
-                bestH2 = h2;
-                bestAvgClusterSize = avgClusterSize;
-            }
-
-            doItFunc(idxGranularity, "diamond", [h1,h2](Graph& graph, const int clusterSize){
-                graph.partitionDiamond(clusterSize);
-            });
-
-            idxGranularity +=1;
+            idxGranularity += 1;
         }
     }
 
     std::cout << " - Best granularity : " << bestGranularity << std::endl;
     std::cout << " - Best duration : " << bestExecTime << std::endl;
-    std::cout << " - Best h1 : " << bestH1 << std::endl;
-    std::cout << " - Best h2 : " << bestH2 << std::endl;
     std::cout << " - Best avg cluster size : " << bestAvgClusterSize << std::endl;
 
-    doItFunc(bestGranularity, "final-with-neighbor-rafinement", [bestH1,bestH2](Graph& graph, const int clusterSize){
-        std::cout << " - h1 : " << bestH1 << std::endl;
-        std::cout << " - h2 : " << bestH2 << std::endl;
-        graph.partitionFinalWithNeighborRefinement(clusterSize, bestH1, bestH2, clusterSize);
-    });
-
-    if(nbNodes/bestAvgClusterSize < 15000){
-        doItFunc(bestGranularity, "final-with-emulated-rafinement", [bestH1,bestH2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
-            std::cout << " - h1 : " << bestH1 << std::endl;
-            std::cout << " - h2 : " << bestH2 << std::endl;
-            graph.partitionFinalWithEmulationRefinement(clusterSize, bestH1,bestH2, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
-         });
+    if(nbNodes/bestAvgClusterSize <= 8000){
+        if(strategy == "update"){
+            doItFunc(bestGranularity, "update-with-emulated-rafinement-", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                graph.GUpdatePartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+             });
+        }
+        else if(strategy == "stop"){
+            doItFunc(bestGranularity, "stop-with-emulated-rafinement", [overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne](Graph& graph, const int clusterSize){
+                graph.GStopPartitionWithEmulationRefinement(clusterSize, clusterSize*2, overheadPerTaskOne, nbThreads, overheadPerPopOne, overheadPerPushOne);
+             });
+        }
     }
-
 
     return 0;
 }

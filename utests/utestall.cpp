@@ -180,16 +180,19 @@ class TestAll : public UTester< TestAll > {
 
         const std::vector<std::function<void(Graph&,int)>> allPartitionMethods= {
                                         [](Graph& graph, const int clusterSize){
-                                            graph.partitionDiamond(clusterSize);
+                                            graph.G(clusterSize);
                                          },
                                         [](Graph& graph, const int clusterSize){
-                                            graph.partitionFinal(clusterSize, 1, 1);
+                                            graph.GUpdate(clusterSize);
                                          },
                                             [](Graph& graph, const int clusterSize){
-                                                graph.partitionFinalWithNeighborRefinement(clusterSize, 1, 1, clusterSize);
+                                                graph.GStop(clusterSize);
                                              },
                                         [](Graph& graph, const int clusterSize){
-                                            graph.partitionFinalWithEmulationRefinement(clusterSize, 1, 1, clusterSize, 0, 10, 0, 0);
+                                            graph.GStopPartitionWithEmulationRefinement(clusterSize, clusterSize, 0, 10, 0, 0);
+                                         },
+                                        [](Graph& graph, const int clusterSize){
+                                            graph.GUpdatePartitionWithEmulationRefinement(clusterSize, clusterSize, 0, 10, 0, 0);
                                          }
                                         };
 

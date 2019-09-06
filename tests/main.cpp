@@ -51,15 +51,15 @@ int main(int argc, char** argv){
             break;
         case 1:
             std::cout << "[INFO] use deptree\n";
-            someDeps = Generator::GenerateDoubleDepTreeTasks(16);
+            someDeps = Generator::GenerateDoubleDepTreeTasks(32);
             break;
         case 2:
             std::cout << "[INFO] use 2dgrid\n";
-            someDeps = Generator::Generate2DGrid(16);
+            someDeps = Generator::Generate2DGrid(5);
             break;
         case 3:
             std::cout << "[INFO] use doubletree\n";
-            someDeps = Generator::GenerateDoubleDepTreeTasks(16);
+            someDeps = Generator::GenerateDoubleDepTreeTasks(18);
             break;
         default:
             std::cout << "[INFO] load " << argv[1] << "\n";
@@ -75,61 +75,57 @@ int main(int argc, char** argv){
 
     //////////////////////////////////////////////////////////////////////////
 
-    const int nbThreads = 8;
-    const int partMaxSize = 16;
-    const int partMinSize = partMaxSize;
-    std::cout << "nbThreads : " << nbThreads << " / partMinSize : " << partMinSize << " / partMaxSize : " << partMaxSize << "\n";
+    const int nbThreads = 40;
 
     const std::vector<std::pair<std::string,std::function<void(Graph&,int)>>> allPartitionMethods= {
-                                    {"diamond", [](Graph& graph, const int clusterSize){
-                                        graph.partitionDiamond(clusterSize);
+                                    {"G", [](Graph& graph, const int clusterSize){
+                                        graph.G(clusterSize);
                                      }},
-                                    {"final", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinal(clusterSize, 3, 2);
+                                    {"GUpdate", [](Graph& graph, const int clusterSize){
+                                        graph.GUpdate(clusterSize);
                                      }},
-                                    {"final-with-neighbor-rafinement", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithNeighborRefinement(clusterSize, 3, 2, clusterSize);
-                                     }},
-                                    {"final-with-emulated-rafinement", [](Graph& graph, const int clusterSize){
-                                        graph.partitionFinalWithEmulationRefinement(clusterSize, 3, 2, clusterSize, 0, nbThreads, 0.1, 0.2);
+                                    {"GStop", [](Graph& graph, const int clusterSize){
+                                        graph.GStop(clusterSize);
                                      }}
                                     };
 
+    for(int partMaxSize = 6 ; partMaxSize < 7 ; ++partMaxSize){
 
-    for(const auto& method : allPartitionMethods){
-        std::cout << "=======================[" << method.first <<  "]======================================\n";
-        Graph aGraph(someDeps.first, someDeps.second);
-        std::cout << "Number of nodes : " << aGraph.getNbNodes() << "\n";
-        assert(aGraph.isDag());
-        std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
+        for(const auto& method : allPartitionMethods){
+            std::cout << "=======================[" << method.first <<  "]======================================\n";
+            Graph aGraph(someDeps.first, someDeps.second);
+            std::cout << "Number of nodes : " << aGraph.getNbNodes() << "\n";
+            assert(aGraph.isDag());
+            std::pair<int,double> degGraph = aGraph.estimateDegreeOfParallelism();
+            std::cout << "Degree of parallelism one the " << method.first << " graph : " << degGraph.first << "  " << degGraph.second << "\n";
 
-        if(costs.size()){
-            for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
-                auto node = aGraph.getNode(idxNode);
-                assert(node->getId() < int(costs.size()));
-                node->setCost(costs[node->getId()]);
+            if(costs.size()){
+                for(int idxNode = 0 ; idxNode < aGraph.getNbNodes() ; ++idxNode){
+                    auto node = aGraph.getNode(idxNode);
+                    assert(node->getId() < int(costs.size()));
+                    node->setCost(costs[node->getId()]);
+                }
             }
+
+            method.second(aGraph, partMaxSize);
+            aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
+            std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-" << method.first << ".dot -o /tmp/agraph-" << method.first << ".pdf\n";
+
+            Graph depGraph = aGraph.getPartitionGraph();
+            assert(depGraph.isDag());
+            std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
+            std::cout << "Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
+            std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
+
+            depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
+            std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/depgraph-" << method.first << ".dot -o /tmp/depgraph-" << method.first << ".pdf\n";
+
+            double duration;
+            std::vector<Executor::Event> events;
+            std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, 0.1, 0.2, 0.2);
+            Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
+            std::cout << "=============================================================\n";
         }
-
-        method.second(aGraph, partMaxSize);
-        aGraph.saveToDot("/tmp/agraph-" + method.first + ".dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/agraph-" << method.first << ".dot -o /tmp/agraph-" << method.first << ".pdf\n";
-
-        Graph depGraph = aGraph.getPartitionGraph();
-        assert(depGraph.isDag());
-        std::pair<int,double> degPar = depGraph.estimateDegreeOfParallelism();
-        std::cout << "Degree of parallelism after " << method.first << " partitioning : " << degPar.first << "  " << degPar.second << "\n";
-        std::cout << "Number of partitions : " << depGraph.getNbNodes() << " -- avg part size : " << double(aGraph.getNbNodes())/double(depGraph.getNbNodes()) << "\n";
-
-        depGraph.saveToDot("/tmp/depgraph-" + method.first + ".dot");
-        std::cout << "Generate pdf of the graph with: dot -Tpdf /tmp/depgraph-" << method.first << ".dot -o /tmp/depgraph-" << method.first << ".pdf\n";
-
-        double duration;
-        std::vector<Executor::Event> events;
-        std::tie(duration, events) = Executor::Execute(depGraph, nbThreads, 0, 0.1, 0.2);
-        Executor::EventsToTrace("/tmp/dep-graph-" + std::to_string(nbThreads) + "trace-" + method.first + ".svg", events, nbThreads);
-        std::cout << "=============================================================\n";
     }
 
     return 0;

@@ -1,4 +1,6 @@
-This Software is a test project to study the acyclic partitioning of DAG (of tasks).
+This Software is a test project to study the acyclic partitioning of DAG (of tasks), see the related paper at https://peerj.com/articles/cs-247/
+
+The official repository is https://gitlab.inria.fr/bramas/dagpar/
 
 # Compilation
 
